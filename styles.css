@@ -41,3 +41,20 @@
   .sync-button[data-state="synced"]{font-size:0}
   .sync-button[data-state="synced"]::after{content:'✓';font-size:15px}
 }
+
+/* Paradise Property Brokers-inspired warm neutral palette. */
+:root{--ink:#4f4b47;--muted:#807970;--paper:#e5ddd2;--card:#f8f5ef;--line:#d3c8bb;--green:#6b625a;--green2:#e9e1d7;--gold:#9b826a;--red:#9b574f;--shadow:0 10px 30px rgba(70,63,57,.12)}
+.sidebar{background:#5b5752;color:#f8f5ef}
+.mark{border-color:#c9b8a4;color:#f8f5ef;font-size:16px;font-family:Georgia,serif}
+.brand span,.sidebar-foot{color:#d7cbc0}
+.navitem{color:#ded5cc}
+.navitem:hover,.navitem.active{background:#756e67;color:#fff}
+.sidebar-foot{border-top-color:#756e67}
+.sidebar-foot i{background:#c9b8a4}
+.topbar{background:rgba(248,245,239,.94)}
+.search,.column{background:#eee8e0}
+.btn,.filters input,.filters select,.field input,.field select,.field textarea,.opp,.modal-card{background:#f8f5ef}
+.avatar{background:#d8ccbf;color:#5b5752}
+.toast{background:#5b5752}
+.modal{background:rgba(60,55,51,.58)}
+.badge.gold{background:#eadfce;color:#725f4d}
