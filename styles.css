@@ -32,3 +32,12 @@
   #modalForm>.form-grid>.form-actions{position:sticky;bottom:0;z-index:2;background:#fff;border-top:1px solid var(--line);margin:8px -18px calc(-90px - env(safe-area-inset-bottom));padding:12px 18px calc(12px + env(safe-area-inset-bottom))}
   #modalForm>.form-grid>.form-actions .primary{min-height:48px;flex:1}
 }
+
+.sync-button{white-space:nowrap}
+.sync-button[data-state="synced"]{color:var(--green);border-color:#b8d5cb;background:var(--green2)}
+.sync-button[data-state="error"]{color:var(--red)}
+@media(max-width:720px){
+  .sync-button{font-size:11px;padding:8px 9px}
+  .sync-button[data-state="synced"]{font-size:0}
+  .sync-button[data-state="synced"]::after{content:'✓';font-size:15px}
+}
