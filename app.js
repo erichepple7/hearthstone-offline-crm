@@ -1,5 +1,5 @@
 const $=(s,e=document)=>e.querySelector(s), $$=(s,e=document)=>[...e.querySelectorAll(s)];
-const state={view:'dashboard',data:{},contact:null};
+const state={view:'dashboard',data:{},contact:null,taskTab:null};
 const buyerStages=['New Lead','Attempted Contact','Contacted','Qualified','Pre-Approved','Showing Homes','Offer Submitted','Under Contract','Closed','Nurture/Lost'];
 const sellerStages=['New Lead','Contacted','Appointment Set','CMA Prepared','Listing Appointment','Listing Signed','Active Listing','Under Contract','Closed','Nurture/Lost'];
 const nav=[['dashboard','⌂','Dashboard'],['contacts','◎','Contacts'],['buyers','⌁','Buyer Pipeline'],['sellers','⌁','Seller Pipeline'],['listings','◇','Listings'],['transactions','▱','Transactions'],['tasks','✓','Tasks & Follow-ups'],['activities','◷','Activity Timeline'],['automations','⚙','Action Plans']];
@@ -66,6 +66,19 @@ function enhanceDocumentLinks(){$$('a[href*="-documents/"][href$="/download"]:no
 new MutationObserver(enhanceDocumentLinks).observe(document.body,{childList:true,subtree:true});
 function enhanceOfflineControls(){if(!offlineMode)return;const exportButton=$('#exportBtn');if(exportButton&&!$('#importBackup')){exportButton.textContent='Export encrypted backup';const importButton=document.createElement('button');importButton.className='btn';importButton.id='importBackup';importButton.textContent='Import file';importButton.onclick=importOfflineBackup;const pasteButton=document.createElement('button');pasteButton.className='btn';pasteButton.id='pasteBackup';pasteButton.textContent='Paste backup';pasteButton.onclick=pasteOfflineBackup;exportButton.before(importButton,pasteButton)}const label=$('.sidebar-foot small'),status=$('.sidebar-foot span');if(label&&label.textContent!=='OFFLINE DEVICE DATABASE')label.textContent='OFFLINE DEVICE DATABASE';if(status&&status.textContent.trim()!=='Saved on this device')status.textContent='Saved on this device'}
 new MutationObserver(enhanceOfflineControls).observe(document.body,{childList:true,subtree:true});
+const dashboardTargets=[['contacts'],['tasks','Today'],['buyers'],['sellers'],['listings'],['transactions'],['transactions'],['tasks','Overdue']];
+function enhanceDashboardMetrics(){
+ if(state.view!=='dashboard')return;
+ $$('.metric:not([data-dashboard-link])').forEach((card,index)=>{
+  const [view,tab]=dashboardTargets[index]||[];if(!view)return;
+  card.dataset.dashboardLink='1';card.setAttribute('role','button');card.setAttribute('tabindex','0');card.setAttribute('aria-label',`Open ${$('.label',card)?.textContent||view}`);
+  const hint=card.querySelector('small');if(hint)hint.insertAdjacentHTML('beforeend',' <span class="metric-arrow" aria-hidden="true">→</span>');
+  const open=async()=>{await go(view);if(tab){const button=$$('.tab').find(x=>x.dataset.tab===tab);button?.click()}};
+  card.onclick=open;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
+ });
+}
+new MutationObserver(enhanceDashboardMetrics).observe($('#app'),{childList:true,subtree:true});
+enhanceDashboardMetrics();
 document.addEventListener('click',e=>{if(!offlineMode)return;const exportButton=e.target.closest('#exportBtn');if(exportButton){e.preventDefault();e.stopImmediatePropagation();exportOfflineBackup();return}const link=e.target.closest('a[href*="-documents/"][href$="/download"]');if(link){e.preventDefault();e.stopImmediatePropagation();downloadOfflineDocument(link.getAttribute('href'))}},true);
 document.addEventListener('click',e=>{const n=e.target.closest('.navitem');if(n)go(n.dataset.view)});$('#quickAdd').onclick=()=>openForm('contacts');$('#closeModal').onclick=closeModal;$('#modal').onclick=e=>{if(e.target.id==='modal')closeModal()};$('#menuBtn').onclick=()=>$('.sidebar').classList.contains('open')?closeMenu():openMenu();$('#closeMenuBtn').onclick=closeMenu;$('#menuBackdrop').onclick=closeMenu;
 let searchTimer;$('#globalSearch').oninput=e=>{clearTimeout(searchTimer);const q=e.target.value.trim();$('.search-results')?.remove();if(q.length<2)return;searchTimer=setTimeout(async()=>{const d=await api('/search?q='+encodeURIComponent(q));const box=document.createElement('div');box.className='search-results';box.innerHTML=[...d.contacts.map(c=>`<div class="result" data-contact="${c.id}"><b>${esc(c.first_name)} ${esc(c.last_name)}</b><small>Contact · ${esc(c.email||c.phone||c.source)}</small></div>`),...d.properties.map(x=>`<div class="result"><b>${esc(x.label)}</b><small>${x.kind} · ${esc(x.detail)}</small></div>`),...d.stages.map(x=>`<div class="result" data-contact="${x.contact_id}"><b>${esc(x.contact_name)}</b><small>${esc(x.type)} · ${esc(x.stage)}</small></div>`)].join('')||empty('No matches','Try another name, property, or stage.');document.body.append(box);$$('[data-contact]',box).forEach(x=>x.onclick=()=>{box.remove();$('#globalSearch').value='';showContact(Number(x.dataset.contact))})},250)};

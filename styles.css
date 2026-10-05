@@ -17,3 +17,8 @@
   .menu-button{display:flex;align-items:center;gap:5px;font-size:20px;white-space:nowrap}
   .menu-button span{font-size:12px;font-weight:800}
 }
+
+.metric[data-dashboard-link]{cursor:pointer;text-align:left;color:inherit;font:inherit;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.metric[data-dashboard-link]:hover{transform:translateY(-2px);box-shadow:0 9px 20px rgba(20,50,48,.11);border-color:#bfcac5}
+.metric[data-dashboard-link]:focus-visible{outline:3px solid rgba(31,107,92,.28);outline-offset:2px}
+.metric-arrow{float:right;color:var(--green);font-weight:800;font-size:15px}
