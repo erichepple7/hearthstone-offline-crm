@@ -70,7 +70,7 @@ const dashboardTargets=[['contacts'],['tasks','Today'],['buyers'],['sellers'],['
 function enhanceDashboardMetrics(){
  if(state.view!=='dashboard')return;
  $$('.metric:not([data-dashboard-link])').forEach((card,index)=>{
-  const [view,tab]=dashboardTargets[index]||[];if(!view)return;
+  const [view,configuredTab]=dashboardTargets[index]||[];if(!view)return;const tab=index===1&&view==='tasks'?(state.data.dashboard?.overdue?'Overdue':'Today'):configuredTab;
   card.dataset.dashboardLink='1';card.setAttribute('role','button');card.setAttribute('tabindex','0');card.setAttribute('aria-label',`Open ${$('.label',card)?.textContent||view}`);
   const hint=card.querySelector('small');if(hint)hint.insertAdjacentHTML('beforeend',' <span class="metric-arrow" aria-hidden="true">→</span>');
   const open=async()=>{await go(view);if(tab){const button=$$('.tab').find(x=>x.dataset.tab===tab);button?.click()}};
