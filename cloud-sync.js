@@ -2,7 +2,7 @@ const firebaseConfig={apiKey:'AIzaSyDJja4KxdCJ-GZ7lE_krRMoX7dF5RGtSKw',authDomai
 const CRM_OWNER_EMAIL='e.hepp19@gmail.com';
 let cloudUser=null,cloudDocument=null,cloudUnsubscribe=null,cloudWriteTimer=null,applyingCloud=false;
 
-function cloudSafe(source){const value=copy(source);value.tables??={};value.tables.contact_documents=[];value.tables.transaction_documents=[];return value}
+function cloudSafe(source){const value=copy(source);value.tables??={};value.tables.contact_documents=[];value.tables.transaction_documents=[];delete value.device_id;delete value.modified_at;return value}
 function syncButton(){let button=document.querySelector('#cloudSyncBtn');if(!button){button=document.createElement('button');button.id='cloudSyncBtn';button.className='btn sync-button';document.querySelector('.avatar')?.before(button)}return button}
 function showSyncState(label,kind=''){const button=syncButton();if(!button)return;button.textContent=label;button.dataset.state=kind;button.disabled=kind==='busy'}
 async function signInForSync(){showSyncState('Signing in…','busy');const provider=new firebase.auth.GoogleAuthProvider();provider.setCustomParameters({login_hint:CRM_OWNER_EMAIL,prompt:'select_account'});try{await firebase.auth().signInWithPopup(provider)}catch(error){console.error(error);showSyncState('Try sign in again','error');alert('Google sign-in did not finish. Close any open Google sign-in window, then tap “Try sign in again.”')}}
