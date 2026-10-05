@@ -12,6 +12,7 @@ const plans=[
 ];
 const fresh=()=>({version:1,device_id:crypto.randomUUID(),tables:Object.fromEntries(tableNames.map(x=>[x,[]])),deleted:{},modified_at:new Date().toISOString()});
 function seed(state){
+ state.tables??={};for(const table of tableNames)state.tables[table]??=[];state.deleted??={};
  state.tables.tasks=(state.tables.tasks||[]).map(task=>{const normalized={priority:'Medium',reminder_minutes:0,completed_at:null,reminder_sent_at:null,...task};if(!String(normalized.status||'').trim())normalized.status=normalized.completed_at?'completed':'open';return normalized});
  if(!state.tables.action_plans.length)state.tables.action_plans=plans.map((p,i)=>({id:i+1,name:p[0],source:p[1],active:1,steps:p[2].map(([day,title])=>({day,title})),created_at:new Date().toISOString(),_modified_at:new Date().toISOString()}));return state
 }
