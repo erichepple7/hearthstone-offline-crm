@@ -1,6 +1,7 @@
 const firebaseConfig={apiKey:'AIzaSyDJja4KxdCJ-GZ7lE_krRMoX7dF5RGtSKw',authDomain:'hearthstone-real-estate-crm.firebaseapp.com',projectId:'hearthstone-real-estate-crm',storageBucket:'hearthstone-real-estate-crm.firebasestorage.app',messagingSenderId:'694415647324',appId:'1:694415647324:web:f8bf3a1e9b529b0f1c3c99'};
 const CRM_OWNER_EMAIL='e.hepp19@gmail.com';
-let cloudUser=null,cloudDocument=null,legacyDocument=null,cloudUnsubscribe=null,cloudWriteTimer=null,applyingCloud=false,cloudFileUploadRunning=false;
+const CLOUD_DIRTY_KEY='crm_cloud_pending_changes';
+let cloudUser=null,cloudDocument=null,legacyDocument=null,cloudUnsubscribe=null,cloudWriteTimer=null,cloudRefreshTimer=null,applyingCloud=false,cloudFileUploadRunning=false,cloudSyncRunning=false;
 
 function cloudSafe(source){const value=copy(source);value.tables??={};for(const table of ['contact_documents','transaction_documents'])value.tables[table]=(value.tables[table]||[]).filter(x=>x.cloud_file_id).map(({data,...document})=>document);delete value.device_id;delete value.modified_at;return value}
 const cloudFileRef=(fileId,chunk)=>firebase.firestore().doc(`users/${cloudUser.uid}/crm/file-${fileId}-${chunk}`);
@@ -16,9 +17,28 @@ async function signInForSync(){showSyncState('Signing in…','busy');const provi
 function installSignInButton(){const button=syncButton();if(!button)return;button.disabled=false;button.textContent='Sign in to sync';button.dataset.state='signed-out';button.onclick=signInForSync}
 async function refreshVisibleView(){if(document.querySelector('#modal:not(.hidden)'))return;if(typeof go==='function'&&state?.view)await go(state.view)}
 async function receiveCloud(snapshot){if(!cloudDocument)return;const current=await read();if(!snapshot.exists){showSyncState('Uploading CRM…','busy');await cloudDocument.set(cloudSafe(current));showSyncState('✓ Synced','synced');return}const incoming=snapshot.data(),merged=merge(current,incoming),safeMerged=cloudSafe(merged);applyingCloud=true;try{await write(merged)}finally{applyingCloud=false}if(JSON.stringify(safeMerged)!==JSON.stringify(incoming))await cloudDocument.set(safeMerged);showSyncState(navigator.onLine?'✓ Synced':'Offline — saved','synced');await refreshVisibleView()}
-async function syncFromServer(){if(!cloudDocument)return;showSyncState('Checking cloud…','busy');try{const [current,legacy]=await Promise.all([cloudDocument.get({source:'server'}),legacyDocument.get({source:'server'})]);if(legacy.exists)await receiveCloud(legacy);await receiveCloud(current);showSyncState('✓ Synced','synced')}catch(error){console.error(error);showSyncState(navigator.onLine?'Sync error':'Offline — saved','error')}}
+async function syncFromServer(){
+ if(!cloudDocument||!navigator.onLine||cloudSyncRunning)return;
+ cloudSyncRunning=true;showSyncState('Checking cloud…','busy');
+ try{
+  const [mainSnapshot,legacySnapshot]=await Promise.all([cloudDocument.get({source:'server'}),legacyDocument.get({source:'server'})]);
+  let merged=await read();
+  if(legacySnapshot.exists)merged=merge(merged,legacySnapshot.data());
+  if(mainSnapshot.exists)merged=merge(merged,mainSnapshot.data());
+  applyingCloud=true;try{await write(merged)}finally{applyingCloud=false}
+  await cloudDocument.set(cloudSafe(merged));
+  localStorage.removeItem(CLOUD_DIRTY_KEY);
+  showSyncState('✓ Synced','synced');
+  await refreshVisibleView();
+ }catch(error){console.error(error);showSyncState(navigator.onLine?'Sync error':'Offline — saved','error')}
+ finally{cloudSyncRunning=false}
+}
 async function connectCloud(user){if(user.email?.toLowerCase()!==CRM_OWNER_EMAIL){await firebase.auth().signOut();alert('This CRM is restricted to the owner’s Google account.');return}cloudUser=user;cloudDocument=firebase.firestore().doc(`users/${user.uid}/crm/main-v2`);legacyDocument=firebase.firestore().doc(`users/${user.uid}/crm/main`);showSyncState('Connecting…','busy');cloudUnsubscribe?.();cloudUnsubscribe=cloudDocument.onSnapshot(receiveCloud,error=>{console.error(error);showSyncState(navigator.onLine?'Sync error':'Offline — saved','error')});const button=syncButton();if(button){button.disabled=false;button.onclick=syncFromServer;button.title='Check for updates from your other devices'}legacyDocument.get({source:'server'}).then(snapshot=>snapshot.exists&&receiveCloud(snapshot)).catch(console.warn);const current=await read();createDailyBackup(current).catch(console.error);syncPendingDocumentFiles()}
 async function initializeCloudSync(){if(!window.firebase){installSignInButton();showSyncState('Sync unavailable','error');return}try{firebase.initializeApp(firebaseConfig);try{await firebase.firestore().enablePersistence({synchronizeTabs:true})}catch(error){if(!['failed-precondition','unimplemented'].includes(error.code))console.warn(error)}await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);firebase.auth().onAuthStateChanged(user=>user?connectCloud(user):installSignInButton());window.addEventListener('online',()=>cloudUser&&showSyncState('Reconnecting…','busy'));window.addEventListener('offline',()=>cloudUser&&showSyncState('Offline — saved','synced'))}catch(error){console.error(error);installSignInButton();showSyncState('Try sign in again','error')}}
-document.addEventListener('crm:local-write',event=>{if(applyingCloud||!cloudDocument)return;clearTimeout(cloudWriteTimer);showSyncState(navigator.onLine?'Syncing…':'Offline — saved',navigator.onLine?'busy':'synced');cloudWriteTimer=setTimeout(async()=>{try{await syncPendingDocumentFiles();const latest=await read();await cloudDocument.set(cloudSafe(latest));await createDailyBackup(latest);showSyncState('✓ Synced','synced')}catch(error){console.error(error);showSyncState(navigator.onLine?'Sync error':'Offline — saved','error')}},500)});
+document.addEventListener('crm:local-write',event=>{if(applyingCloud)return;localStorage.setItem(CLOUD_DIRTY_KEY,new Date().toISOString());if(!cloudDocument)return;clearTimeout(cloudWriteTimer);showSyncState(navigator.onLine?'Syncing…':'Offline — saved',navigator.onLine?'busy':'synced');cloudWriteTimer=setTimeout(async()=>{try{if(!navigator.onLine)return;await syncPendingDocumentFiles();await syncFromServer();await createDailyBackup(await read())}catch(error){console.error(error);showSyncState(navigator.onLine?'Sync error':'Offline — saved','error')}},500)});
 document.addEventListener('crm:document-delete',event=>deleteCloudFile(event.detail).catch(console.error));
+window.addEventListener('online',()=>{if(cloudUser){showSyncState('Reconnecting…','busy');syncFromServer()}});
+window.addEventListener('pageshow',()=>cloudUser&&navigator.onLine&&syncFromServer());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&cloudUser&&navigator.onLine)syncFromServer()});
+cloudRefreshTimer=setInterval(()=>cloudUser&&navigator.onLine&&syncFromServer(),60000);
 window.addEventListener('DOMContentLoaded',initializeCloudSync);
