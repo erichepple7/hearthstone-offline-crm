@@ -16,17 +16,22 @@ function showSyncState(label,kind=''){const button=syncButton();if(!button)retur
 async function signInForSync(){showSyncState('Signing in…','busy');const provider=new firebase.auth.GoogleAuthProvider();provider.setCustomParameters({login_hint:CRM_OWNER_EMAIL,prompt:'select_account'});try{await firebase.auth().signInWithPopup(provider)}catch(error){console.error(error);showSyncState('Try sign in again','error');alert('Google sign-in did not finish. Close any open Google sign-in window, then tap “Try sign in again.”')}}
 function installSignInButton(){const button=syncButton();if(!button)return;button.disabled=false;button.textContent='Sign in to sync';button.dataset.state='signed-out';button.onclick=signInForSync}
 async function refreshVisibleView(){if(document.querySelector('#modal:not(.hidden)'))return;if(typeof go==='function'&&state?.view)await go(state.view)}
-async function receiveCloud(snapshot){if(!cloudDocument)return;const current=await read();if(!snapshot.exists){showSyncState('Uploading CRM…','busy');await cloudDocument.set(cloudSafe(current));showSyncState('✓ Synced','synced');return}const incoming=snapshot.data(),merged=merge(current,incoming),safeMerged=cloudSafe(merged);applyingCloud=true;try{await write(merged)}finally{applyingCloud=false}if(JSON.stringify(safeMerged)!==JSON.stringify(incoming))await cloudDocument.set(safeMerged);showSyncState(navigator.onLine?'✓ Synced':'Offline — saved','synced');await refreshVisibleView()}
+async function receiveCloud(snapshot){if(!cloudDocument)return;const current=await read();if(!snapshot.exists){showSyncState('Uploading CRM…','busy');setTimeout(syncFromServer,0);return}const incoming=snapshot.data(),merged=merge(current,incoming),safeMerged=cloudSafe(merged);applyingCloud=true;try{await write(merged)}finally{applyingCloud=false}if(JSON.stringify(safeMerged)!==JSON.stringify(incoming))setTimeout(syncFromServer,0);showSyncState(navigator.onLine?'✓ Synced':'Offline — saved','synced');await refreshVisibleView()}
 async function syncFromServer(){
  if(!cloudDocument||!navigator.onLine||cloudSyncRunning)return;
  cloudSyncRunning=true;showSyncState('Checking cloud…','busy');
  try{
-  const [mainSnapshot,legacySnapshot]=await Promise.all([cloudDocument.get({source:'server'}),legacyDocument.get({source:'server'})]);
-  let merged=await read();
-  if(legacySnapshot.exists)merged=merge(merged,legacySnapshot.data());
-  if(mainSnapshot.exists)merged=merge(merged,mainSnapshot.data());
+  const legacySnapshot=await legacyDocument.get({source:'server'});
+  let localState=await read();
+  if(legacySnapshot.exists)localState=merge(localState,legacySnapshot.data());
+  const merged=await firebase.firestore().runTransaction(async transaction=>{
+   const latestSnapshot=await transaction.get(cloudDocument);
+   const latest=latestSnapshot.exists?latestSnapshot.data():{tables:{},deleted:{}};
+   const reconciled=merge(copy(localState),latest);
+   transaction.set(cloudDocument,cloudSafe(reconciled));
+   return reconciled;
+  });
   applyingCloud=true;try{await write(merged)}finally{applyingCloud=false}
-  await cloudDocument.set(cloudSafe(merged));
   localStorage.removeItem(CLOUD_DIRTY_KEY);
   showSyncState('✓ Synced','synced');
   await refreshVisibleView();
