@@ -1,9 +1,11 @@
 const firebaseConfig={apiKey:'AIzaSyDJja4KxdCJ-GZ7lE_krRMoX7dF5RGtSKw',authDomain:'hearthstone-real-estate-crm.firebaseapp.com',projectId:'hearthstone-real-estate-crm',storageBucket:'hearthstone-real-estate-crm.firebasestorage.app',messagingSenderId:'694415647324',appId:'1:694415647324:web:f8bf3a1e9b529b0f1c3c99'};
 const CRM_OWNER_EMAIL='e.hepp19@gmail.com';
 const CLOUD_DIRTY_KEY='crm_cloud_pending_changes';
-let cloudUser=null,cloudDocument=null,legacyDocument=null,cloudUnsubscribe=null,openHouseUnsubscribe=null,cloudWriteTimer=null,cloudRefreshTimer=null,applyingCloud=false,cloudFileUploadRunning=false,cloudSyncRunning=false,openHouseImportRunning=false;
+let cloudUser=null,cloudDocument=null,legacyDocument=null,cloudUnsubscribe=null,openHouseUnsubscribe=null,cloudWriteTimer=null,cloudRefreshTimer=null,applyingCloud=false,cloudFileUploadRunning=false,cloudSyncRunning=false,openHouseImportRunning=false,publicListingPublishRunning=false;
 
 function cloudSafe(source){const value=copy(source);value.tables??={};for(const table of ['contact_documents','transaction_documents'])value.tables[table]=(value.tables[table]||[]).filter(x=>x.cloud_file_id).map(({data,...document})=>document);delete value.device_id;delete value.modified_at;return value}
+function publicListingSafe(listing){const allowed=['id','address','mls','current_price','bedrooms','bathrooms','square_feet','pool','area','important_features','public_description','feature_highlights','hero_image_url','gallery_urls','virtual_tour_url','public_listing_url','flyer_url','public_documents','status'];return Object.fromEntries(allowed.map(key=>[key,listing[key]??(key.endsWith('_urls')||['feature_highlights','public_documents'].includes(key)?[]:'')]))}
+async function publishPublicListings(source){if(publicListingPublishRunning||!cloudUser||!navigator.onLine)return;publicListingPublishRunning=true;try{for(const listing of source.tables.listings||[]){const ref=firebase.firestore().collection('public_listings').doc(String(listing.id)),value=publicListingSafe(listing),snapshot=await ref.get({source:'server'});if(!snapshot.exists||JSON.stringify(snapshot.data())!==JSON.stringify(value))await ref.set(value)}}catch(error){console.error('Public listing publish:',error)}finally{publicListingPublishRunning=false}}
 const cloudFileRef=(fileId,chunk)=>firebase.firestore().doc(`users/${cloudUser.uid}/crm/file-${fileId}-${chunk}`);
 async function uploadCloudFile(document,data){if(!cloudUser||!data)throw Error('Sign in and connect to the internet before uploading this document.');const base64=String(data).split(',')[1]||'',chunkSize=600000,chunks=Math.ceil(base64.length/chunkSize),fileId=String(document.id);for(let index=0;index<chunks;index++)await cloudFileRef(fileId,index).set({data:base64.slice(index*chunkSize,(index+1)*chunkSize),index,updated_at:new Date().toISOString()});return {cloud_file_id:fileId,cloud_chunks:chunks,cloud_synced_at:new Date().toISOString()}}
 async function fetchCloudFile(document){if(document.data)return document.data;if(!cloudUser||!document.cloud_file_id)throw Error('This document is not available on this device yet. Connect to the internet and tap Sync.');const snapshots=await Promise.all(Array.from({length:Number(document.cloud_chunks||0)},(_,index)=>cloudFileRef(document.cloud_file_id,index).get())),base64=snapshots.map(x=>x.data()?.data||'').join('');if(!base64)throw Error('The cloud document could not be downloaded.');return `data:${document.mime_type||'application/octet-stream'};base64,${base64}`}
@@ -34,6 +36,7 @@ async function syncFromServer(){
   applyingCloud=true;try{await write(merged)}finally{applyingCloud=false}
   localStorage.removeItem(CLOUD_DIRTY_KEY);
   showSyncState('✓ Synced','synced');
+  await publishPublicListings(merged);
   await refreshVisibleView();
  }catch(error){console.error(error);showSyncState(navigator.onLine?'Sync error':'Offline — saved','error')}
  finally{cloudSyncRunning=false}
