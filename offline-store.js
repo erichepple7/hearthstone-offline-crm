@@ -1,5 +1,5 @@
 const DB_NAME='hearthstone-offline-crm',STORE='state',KEY='main';
-const tableNames=['contacts','opportunities','listings','transactions','tasks','activities','action_plans','communication_drafts','transaction_checklist','transaction_documents','contact_documents','milestone_reminders'];
+const tableNames=['contacts','opportunities','listings','transactions','tasks','activities','action_plans','communication_drafts','transaction_checklist','transaction_documents','contact_documents','milestone_reminders','notifications'];
 const params=new URLSearchParams(location.search);
 if(params.get('offline')==='1')localStorage.setItem('hearthstone_offline','1');
 const offlineMode=localStorage.getItem('hearthstone_offline')==='1'||location.protocol==='file:';
