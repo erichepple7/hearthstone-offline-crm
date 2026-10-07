@@ -1,5 +1,6 @@
 const firebaseConfig={apiKey:'AIzaSyDJja4KxdCJ-GZ7lE_krRMoX7dF5RGtSKw',authDomain:'hearthstone-real-estate-crm.firebaseapp.com',projectId:'hearthstone-real-estate-crm',storageBucket:'hearthstone-real-estate-crm.firebasestorage.app',messagingSenderId:'694415647324',appId:'1:694415647324:web:f8bf3a1e9b529b0f1c3c99'};
 firebase.initializeApp(firebaseConfig);
+document.querySelector('header .brand').textContent='ERIC HEPPLE · PARADISE PROPERTY BROKERS INC';
 const params=new URLSearchParams(location.search),listingId=params.get('listing')||'',fallbackAddress=params.get('address')||'Listing',slides=document.querySelector('#slides');let photos=[],index=0,timer,playing=true;
 const money=value=>Number(value||0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 function draw(){document.querySelectorAll('.slide').forEach((slide,i)=>slide.classList.toggle('active',i===index));document.querySelector('#counter').textContent=`${photos.length?index+1:0} / ${photos.length}`}
