@@ -30,10 +30,37 @@ function applyPlan(state,contact){const plan=state.tables.action_plans.find(x=>x
 function ensureTransaction(state,tx){const fields=[['Earnest money due',tx.contract_date],['Inspection',tx.inspection_date],['Appraisal',tx.appraisal_date],['Financing approval',tx.financing_deadline],['Final Walk Through',tx.final_walkthrough_date],['Closing',tx.closing_date]];for(const [title,due] of fields)if(!state.tables.transaction_checklist.some(x=>x.transaction_id===tx.id&&x.title===title))state.tables.transaction_checklist.push(touch({id:newId(),transaction_id:tx.id,title,due_date:due||null,responsible_party:'',status:'open',notes:'',sort_order:99,completed_at:null,created_at:now()}))}
 function search(state,q){const text=q.toLowerCase(),contains=x=>JSON.stringify(x).toLowerCase().includes(text);return {contacts:list(state,'contacts').filter(contains).slice(0,25),properties:[...state.tables.listings.filter(contains).map(x=>({kind:'Listing',id:x.id,label:x.address,status:x.status,detail:x.status})),...state.tables.transactions.filter(contains).map(x=>({kind:'Transaction',id:x.id,label:x.property,status:x.status,detail:x.status}))].slice(0,25),stages:list(state,'opportunities').filter(contains).slice(0,25)}}
 function remove(state,table,id){const row=state.tables[table]?.find(x=>x.id===id);if(!row)return;state.tables[table]=state.tables[table].filter(x=>x.id!==id);state.deleted[table]??={};state.deleted[table][id]=now();if(table==='contacts'){for(const t of ['opportunities','activities'])for(const child of state.tables[t].filter(x=>x.contact_id===id))remove(state,t,child.id);for(const t of ['tasks','listings','transactions'])state.tables[t]=state.tables[t].map(x=>touch({...x,...(x.contact_id===id?{contact_id:null}:{}),...(x.seller_id===id?{seller_id:null}:{}),...(x.buyer_id===id?{buyer_id:null}:{})}))}if(table==='transactions')for(const t of ['transaction_checklist','transaction_documents'])for(const child of state.tables[t].filter(x=>x.transaction_id===id))remove(state,t,child.id)}
+function mergeContact(state,primaryId,duplicateId){
+ const primary=state.tables.contacts.find(x=>x.id===primaryId),duplicate=state.tables.contacts.find(x=>x.id===duplicateId);
+ if(!primary||!duplicate||primaryId===duplicateId)throw Error('Both contact records are required');
+ const later=(a,b)=>[a,b].filter(Boolean).sort().pop()||'',earlier=(a,b)=>[a,b].filter(Boolean).sort()[0]||'';
+ const notes=[primary.notes,duplicate.notes].map(x=>String(x||'').trim()).filter(Boolean);
+ const merged={...primary};
+ for(const key of ['first_name','last_name','phone','email','partner','preferred_contact','source','budget','area','important_feature','pool'])if(!merged[key]&&duplicate[key])merged[key]=duplicate[key];
+ for(const key of ['budget_min','budget_max','bedrooms','bathrooms'])merged[key]=Math.max(Number(primary[key]||0),Number(duplicate[key]||0));
+ merged.roles=[...new Set([...(primary.roles||[]),...(duplicate.roles||[])])];
+ merged.tags=[...new Set([...(primary.tags||[]),...(duplicate.tags||[])].map(x=>String(x).trim()).filter(Boolean))];
+ merged.notes=[...new Set(notes)].join('\n\n');
+ merged.last_contact=later(primary.last_contact,duplicate.last_contact);
+ merged.next_follow_up=later(primary.next_follow_up,duplicate.next_follow_up);
+ merged.created_at=earlier(primary.created_at,duplicate.created_at)||primary.created_at;
+ Object.assign(primary,touch({...merged,updated_at:now()}));
+ for(const table of ['opportunities','activities','tasks','communication_drafts','contact_documents','notifications'])for(const row of state.tables[table]||[])if(Number(row.contact_id)===duplicateId)Object.assign(row,touch({...row,contact_id:primaryId}));
+ for(const row of state.tables.listings||[])if(Number(row.seller_id)===duplicateId)Object.assign(row,touch({...row,seller_id:primaryId}));
+ for(const row of state.tables.transactions||[]){const update={};if(Number(row.buyer_id)===duplicateId)update.buyer_id=primaryId;if(Number(row.seller_id)===duplicateId)update.seller_id=primaryId;if(Object.keys(update).length)Object.assign(row,touch({...row,...update}))}
+ const seen=new Map();
+ for(const opportunity of [...state.tables.opportunities].filter(x=>Number(x.contact_id)===primaryId)){
+  const key=[opportunity.type,opportunity.stage,opportunity.title,Number(opportunity.value||0),opportunity.status].join('|'),existing=seen.get(key);
+  if(!existing)seen.set(key,opportunity);else{const keep=String(existing.updated_at||existing._modified_at||'')>=String(opportunity.updated_at||opportunity._modified_at||'')?existing:opportunity,drop=keep===existing?opportunity:existing;seen.set(key,keep);remove(state,'opportunities',drop.id)}
+ }
+ remove(state,'contacts',duplicateId);
+ return copy(primary)
+}
 
 async function localApi(path,opts={}){const state=await read(),method=opts.method||'GET',parts=path.split('?')[0].split('/').filter(Boolean),input=body(opts);
  if(path.startsWith('/dashboard'))return dashboard(state);if(path.startsWith('/search'))return search(state,new URLSearchParams(path.split('?')[1]).get('q')||'');if(path==='/export')return copy(state);
  if(parts[0]==='contacts'&&parts[2]==='apply-plan'&&method==='POST'){const contact=state.tables.contacts.find(x=>x.id===Number(parts[1])),created=contact?applyPlan(state,contact):0;await write(state);return {created}}
+ if(parts[0]==='contacts'&&parts[2]==='merge'&&method==='POST'){const merged=mergeContact(state,Number(parts[1]),Number(input.duplicate_id));await write(state);return merged}
  if(parts[0]==='contacts'&&parts[2]==='documents'){const contactId=Number(parts[1]);if(method==='GET')return copy(state.tables.contact_documents.filter(x=>x.contact_id===contactId).map(({data,...x})=>x));if(method==='POST'){const row=touch({id:newId(),contact_id:contactId,filename:input.filename,mime_type:input.mime_type||'application/octet-stream',size_bytes:Math.round((input.data?.length||0)*.75),data:input.data,created_at:now()});state.tables.contact_documents.push(row);await write(state);const {data,...meta}=row;return meta}}
  if(parts[0]==='transactions'&&parts[2]==='documents'){const transactionId=Number(parts[1]);if(method==='GET')return copy(state.tables.transaction_documents.filter(x=>x.transaction_id===transactionId).map(({data,...x})=>x));if(method==='POST'){const row=touch({id:newId(),transaction_id:transactionId,filename:input.filename,mime_type:input.mime_type||'application/octet-stream',size_bytes:Math.round((input.data?.length||0)*.75),data:input.data,created_at:now()});state.tables.transaction_documents.push(row);await write(state);const {data,...meta}=row;return meta}}
  if(parts[0]==='transactions'&&parts[2]==='checklist'){const transactionId=Number(parts[1]),tx=state.tables.transactions.find(x=>x.id===transactionId);if(tx)ensureTransaction(state,tx);if(method==='GET'){await write(state);return copy(state.tables.transaction_checklist.filter(x=>x.transaction_id===transactionId))}if(method==='POST'){const row=touch({id:newId(),transaction_id:transactionId,title:input.title,due_date:input.due_date||null,responsible_party:input.responsible_party||'',status:'open',notes:input.notes||'',sort_order:Number(input.sort_order||99),completed_at:null,created_at:now()});state.tables.transaction_checklist.push(row);await write(state);return copy(row)}}
