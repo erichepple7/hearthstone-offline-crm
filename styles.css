@@ -42,7 +42,7 @@
   .sync-button[data-state="synced"]::after{content:'✓';font-size:15px}
 }
 
-/* Paradise Property Brokers-inspired warm neutral palette. */
+/* Paradise Property Brokers Inc-inspired warm neutral palette. */
 :root{--ink:#4f4b47;--muted:#807970;--paper:#e5ddd2;--card:#f8f5ef;--line:#d3c8bb;--green:#6b625a;--green2:#e9e1d7;--gold:#9b826a;--red:#9b574f;--shadow:0 10px 30px rgba(70,63,57,.12)}
 .sidebar{background:#5b5752;color:#f8f5ef}
 .mark{border-color:#c9b8a4;color:#f8f5ef;font-size:16px;font-family:Georgia,serif}
