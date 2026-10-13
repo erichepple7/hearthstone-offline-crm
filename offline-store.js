@@ -38,7 +38,7 @@ function mergeContact(state,primaryId,duplicateId){
  const later=(a,b)=>[a,b].filter(Boolean).sort().pop()||'',earlier=(a,b)=>[a,b].filter(Boolean).sort()[0]||'';
  const notes=[primary.notes,duplicate.notes].map(x=>String(x||'').trim()).filter(Boolean);
  const merged={...primary};
- for(const key of ['first_name','last_name','phone','email','partner','preferred_contact','source','budget','area','important_feature','pool'])if(!merged[key]&&duplicate[key])merged[key]=duplicate[key];
+ for(const key of ['first_name','last_name','phone','email','partner','preferred_contact','source','budget','area','subdivision','important_feature','pool'])if(!merged[key]&&duplicate[key])merged[key]=duplicate[key];
  for(const key of ['budget_min','budget_max','bedrooms','bathrooms'])merged[key]=Math.max(Number(primary[key]||0),Number(duplicate[key]||0));
  merged.roles=[...new Set([...(primary.roles||[]),...(duplicate.roles||[])])];
  merged.tags=[...new Set([...(primary.tags||[]),...(duplicate.tags||[])].map(x=>String(x).trim()).filter(Boolean))];
