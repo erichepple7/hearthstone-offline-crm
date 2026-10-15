@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner() {
+      return request.auth != null
+        && request.auth.token.email == 'erichepple7@gmail.com';
+    }
+
+    match /users/{userId}/crm/{document=**} {
+      allow read, write: if isOwner() && request.auth.uid == userId;
+    }
+
+    match /public_listings/{listingId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /open_house_submissions/{submissionId} {
+      allow create: if request.auth == null
+        && request.resource.data.keys().hasOnly([
+          'first_name', 'last_name', 'phone', 'email', 'role', 'timeframe',
+          'budget_min', 'budget_max', 'bedrooms', 'pool', 'area',
+          'important_feature', 'agent_status', 'preapproved', 'consent',
+          'listing_id', 'listing_address', 'source', 'imported', 'created_at'
+        ])
+        && request.resource.data.keys().hasAll([
+          'first_name', 'last_name', 'phone', 'email', 'role', 'consent',
+          'listing_id', 'listing_address', 'source', 'imported', 'created_at'
+        ])
+        && request.resource.data.first_name is string
+        && request.resource.data.first_name.size() > 0
+        && request.resource.data.first_name.size() <= 80
+        && request.resource.data.last_name is string
+        && request.resource.data.last_name.size() > 0
+        && request.resource.data.last_name.size() <= 80
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 7
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 5
+        && request.resource.data.email.size() <= 160
+        && request.resource.data.consent == true
+        && request.resource.data.source == 'Open House'
+        && request.resource.data.imported == false
+        && request.resource.data.created_at == request.time;
+
+      allow read, update, delete: if isOwner();
+    }
+  }
+}
