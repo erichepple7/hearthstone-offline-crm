@@ -1,5 +1,5 @@
 const firebaseConfig={apiKey:'AIzaSyDJja4KxdCJ-GZ7lE_krRMoX7dF5RGtSKw',authDomain:'hearthstone-real-estate-crm.firebaseapp.com',projectId:'hearthstone-real-estate-crm',storageBucket:'hearthstone-real-estate-crm.firebasestorage.app',messagingSenderId:'694415647324',appId:'1:694415647324:web:f8bf3a1e9b529b0f1c3c99'};
-const CRM_OWNER_EMAIL='e.hepp19@gmail.com';
+const CRM_OWNER_EMAIL='erichepple7@gmail.com';
 const CLOUD_DIRTY_KEY='crm_cloud_pending_changes';
 let cloudUser=null,cloudDocument=null,legacyDocument=null,cloudUnsubscribe=null,openHouseUnsubscribe=null,cloudWriteTimer=null,cloudRefreshTimer=null,applyingCloud=false,cloudFileUploadRunning=false,cloudSyncRunning=false,openHouseImportRunning=false,publicListingPublishRunning=false;
 
