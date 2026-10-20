@@ -183,3 +183,12 @@
     min-height:52px;
   }
 }
+
+/* iOS Safari zooms the whole page when a focused form control is under 16px. */
+@media(max-width:720px){
+  input,
+  select,
+  textarea{
+    font-size:16px!important;
+  }
+}
