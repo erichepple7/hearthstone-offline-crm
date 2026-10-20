@@ -159,3 +159,27 @@
     .notification-panel{top:calc(70px + env(safe-area-inset-top));max-height:calc(100dvh - 88px - env(safe-area-inset-top))}
   }
 }
+
+/* Contact and record tabs must swipe horizontally on narrow phones. */
+@media(max-width:720px){
+  .tabs{
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+    touch-action:pan-x;
+    scrollbar-width:none;
+    scroll-snap-type:x proximity;
+  }
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs .tab{
+    flex:0 0 auto;
+    white-space:nowrap;
+    scroll-snap-align:start;
+    min-height:52px;
+  }
+}
