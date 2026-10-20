@@ -97,3 +97,65 @@
 .assistant-voice-status{margin:0;padding:8px 18px 4px;color:var(--green);font-size:12px;background:#fff}.assistant-voice-status.error{color:var(--red)}
 .assistant-priority-list{list-style:none!important;padding:0!important;margin:14px 0!important;display:grid;gap:10px}.assistant-priority-item{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}.assistant-priority-item p{margin:4px 0!important}.assistant-priority-item small{display:block;color:var(--muted);line-height:1.4}.assistant-priority-item .btn{flex:none}.assistant-advice{padding-top:8px;border-top:1px solid var(--line);color:var(--muted)}
 @media(max-width:720px){.assistant-priority-item{display:block}.assistant-priority-item .btn{margin-top:10px;width:100%}}
+
+/* Keep every primary control reachable in the iPhone header. */
+@media(max-width:720px){
+  .topbar{
+    height:126px;
+    padding:10px 14px;
+    display:grid;
+    grid-template-columns:auto minmax(82px,1fr) 48px 48px;
+    grid-template-areas:
+      "menu sync add alerts"
+      "search search search search";
+    grid-template-rows:48px 46px;
+    align-content:center;
+    align-items:center;
+    gap:8px;
+  }
+  .menu-button{grid-area:menu;min-height:44px;padding:0 6px}
+  .sync-button{
+    grid-area:sync;
+    width:100%;
+    min-width:0;
+    min-height:44px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .sync-button[data-state="synced"]{font-size:11px}
+  .sync-button[data-state="synced"]::after{content:none}
+  #quickAdd{
+    grid-area:add;
+    width:48px;
+    min-width:48px;
+    height:48px;
+    margin:0;
+    padding:0;
+    display:grid;
+    place-items:center;
+    font-size:0;
+  }
+  #quickAdd::after{content:'＋';font-size:24px;line-height:1}
+  .notification-button{
+    grid-area:alerts;
+    width:48px;
+    height:48px;
+    display:grid;
+    place-items:center;
+    font-size:21px;
+  }
+  .search{grid-area:search;width:100%;height:46px;min-width:0}
+  .search input{min-width:0;font-size:16px}
+  main{padding-top:146px}
+  .search-results{top:126px}
+  .notification-panel{top:70px;right:14px;left:14px;width:auto;max-height:calc(100dvh - 88px)}
+}
+@supports(padding:max(0px)){
+  @media(max-width:720px){
+    .topbar{height:calc(126px + env(safe-area-inset-top));padding-top:calc(10px + env(safe-area-inset-top))}
+    main{padding-top:calc(146px + env(safe-area-inset-top))}
+    .search-results{top:calc(126px + env(safe-area-inset-top))}
+    .notification-panel{top:calc(70px + env(safe-area-inset-top));max-height:calc(100dvh - 88px - env(safe-area-inset-top))}
+  }
+}
