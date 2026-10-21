@@ -63,5 +63,5 @@ document.addEventListener('crm:document-delete',event=>deleteCloudFile(event.det
 window.addEventListener('online',()=>{if(cloudUser){showSyncState('Reconnecting…','busy');syncFromServer()}});
 window.addEventListener('pageshow',()=>cloudUser&&navigator.onLine&&syncFromServer());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&cloudUser&&navigator.onLine)syncFromServer()});
-cloudRefreshTimer=setInterval(()=>cloudUser&&navigator.onLine&&syncFromServer(),300000);
+cloudRefreshTimer=setInterval(()=>cloudUser&&navigator.onLine&&syncFromServer(),600000);
 window.addEventListener('DOMContentLoaded',initializeCloudSync);
