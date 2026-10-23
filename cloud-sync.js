@@ -19,8 +19,12 @@ function showSyncState(label,kind=''){const button=syncButton();if(!button)retur
 function showCloudError(error){const limited=error?.code==='resource-exhausted'||/quota exceeded/i.test(String(error?.message||''));showSyncState(limited?'Cloud limit reached — saved here':navigator.onLine?'Sync error':'Offline — saved','error');const button=syncButton();if(button)button.title=limited?'Firebase’s daily cloud limit has been reached. Your changes are saved on this device and will sync after the limit resets.':'Check for updates from your other devices'}
 async function signInForSync(){showSyncState('Signing in…','busy');const provider=new firebase.auth.GoogleAuthProvider();provider.setCustomParameters({login_hint:CRM_OWNER_EMAIL,prompt:'select_account'});try{await firebase.auth().signInWithPopup(provider)}catch(error){console.error(error);showSyncState('Try sign in again','error');alert('Google sign-in did not finish. Close any open Google sign-in window, then tap “Try sign in again.”')}}
 function installSignInButton(){const button=syncButton();if(!button)return;button.disabled=false;button.textContent='Sign in to sync';button.dataset.state='signed-out';button.onclick=signInForSync}
-async function refreshVisibleView(){if(document.querySelector('#modal:not(.hidden)'))return;const contactId=state?.contact?.id;if(contactId&&typeof showContact==='function')return showContact(contactId);if(typeof go==='function'&&state?.view)await go(state.view)}
-async function refreshCloudUi(){if(typeof refreshNotifications==='function')await refreshNotifications();await refreshVisibleView()}
+async function refreshCloudUi(){
+ // Cloud sync must never replace the screen the user is working on. The merged
+ // records are saved locally and appear the next time the user opens a view.
+ // Only the notification badge is safe to refresh in place.
+ if(typeof refreshNotifications==='function')await refreshNotifications()
+}
 async function receiveCloud(snapshot){if(!cloudDocument)return;const current=await read();if(!snapshot.exists){showSyncState('Uploading CRM…','busy');setTimeout(syncFromServer,0);return}const incoming=snapshot.data(),merged=merge(current,incoming),safeMerged=cloudSafe(merged);applyingCloud=true;try{await write(merged)}finally{applyingCloud=false}if(JSON.stringify(safeMerged)!==JSON.stringify(incoming))setTimeout(syncFromServer,0);showSyncState(navigator.onLine?'✓ Synced':'Offline — saved','synced');await refreshCloudUi()}
 async function syncFromServer(){
  if(!cloudDocument||!navigator.onLine||cloudSyncRunning)return false;
