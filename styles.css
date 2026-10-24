@@ -200,3 +200,4 @@
 @media(max-width:900px){.scout-workspace{grid-template-columns:340px minmax(0,1fr)}}
 @media(max-width:720px){.scout-shell{height:auto;min-height:0}.scout-toolbar{flex-wrap:wrap}.scout-toolbar form{flex-basis:100%}.scout-toolbar>select,.scout-toolbar>#scoutSearchMap{flex:1}.scout-workspace{display:flex;flex-direction:column-reverse}.scout-map{height:42dvh;min-height:300px}.scout-results{overflow:visible;border-right:0}.scout-cards{display:grid;gap:8px}.scout-property{margin:0}}
 @media(max-width:520px){.scout-actions{grid-template-columns:1fr}.scout-actions .primary{grid-column:auto}.scout-sales>div{display:block}.scout-sales span{display:block;margin-top:4px;text-align:left}}
+.scout-source{display:inline-block;margin:10px 0 0;padding:6px 9px;border-radius:999px;background:#e8f2ee;color:var(--green);font-size:10px;font-weight:700}
