@@ -70,6 +70,7 @@ function mergeContact(state,primaryId,duplicateId){
 
 async function localApi(path,opts={}){const state=await read(),method=opts.method||'GET',parts=path.split('?')[0].split('/').filter(Boolean),input=body(opts);
  if(path.startsWith('/dashboard'))return dashboard(state);if(path.startsWith('/search'))return search(state,new URLSearchParams(path.split('?')[1]).get('q')||'');if(path==='/export')return copy(state);
+ if(path==='/contacts/reconcile-pipelines'&&method==='POST'){ensureContactOpportunities(state);await write(state);return {ok:true}}
  if(parts[0]==='contacts'&&parts[2]==='apply-plan'&&method==='POST'){const contact=state.tables.contacts.find(x=>x.id===Number(parts[1])),created=contact?applyPlan(state,contact,input.plan_id):0;await write(state);return {created}}
  if(parts[0]==='contacts'&&parts[2]==='merge'&&method==='POST'){const merged=mergeContact(state,Number(parts[1]),Number(input.duplicate_id));await write(state);return merged}
  if(parts[0]==='contacts'&&parts[2]==='documents'){const contactId=Number(parts[1]);if(method==='GET')return copy(state.tables.contact_documents.filter(x=>x.contact_id===contactId).map(({data,...x})=>x));if(method==='POST'){const row=touch({id:newId(),contact_id:contactId,filename:input.filename,mime_type:input.mime_type||'application/octet-stream',size_bytes:Math.round((input.data?.length||0)*.75),data:input.data,created_at:now()});state.tables.contact_documents.push(row);await write(state);const {data,...meta}=row;return meta}}
