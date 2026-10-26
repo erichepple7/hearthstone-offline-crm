@@ -62,5 +62,32 @@
     return {date:todayKey,urgent,total:unique.length,items:unique,headline:urgent?`${urgent} item${urgent===1?'':'s'} need immediate attention.`:unique.length?`${unique.length} useful next step${unique.length===1?'':'s'} found.`:'Your CRM does not show any urgent work right now.'};
   }
 
-  root.CrmAssistantReasoning={buildAssistantInsights};
+  function contactStrategy(data={},contactId,nowValue=new Date()){
+    const contact=(data.contacts||[]).find(item=>Number(item.id)===Number(contactId));if(!contact)return null;
+    const now=new Date(nowValue),activities=(data.activities||[]).filter(item=>Number(item.contact_id)===Number(contact.id)).sort((a,b)=>String(b.occurred_at||b.created_at||'').localeCompare(String(a.occurred_at||a.created_at||''))),tasks=(data.tasks||[]).filter(item=>Number(item.contact_id)===Number(contact.id)&&isOpen(item.status)),opportunities=(data.opportunities||[]).filter(item=>Number(item.contact_id)===Number(contact.id)&&isOpen(item.status)),roles=Array.isArray(contact.roles)?contact.roles:[],timeline=contact.buyer_timeline||contact.seller_timeline||'',lastValue=contact.last_contact||activities[0]?.occurred_at||contact.created_at,last=lastValue?new Date(lastValue):null,daysSince=last&&!Number.isNaN(last.getTime())?Math.max(0,Math.floor((now-last)/DAY)):null,name=nameOf(contact),signals=[];
+    if(/hot/i.test(timeline))signals.push('The contact is marked hot and ready.');
+    else if(timeline)signals.push(`The recorded timeline is ${timeline}.`);
+    if(daysSince===null)signals.push('No completed communication is recorded.');
+    else signals.push(`Last recorded contact was ${daysSince} day${daysSince===1?'':'s'} ago.`);
+    if(contact.next_follow_up)signals.push(`A follow-up is scheduled for ${dateKey(contact.next_follow_up)}.`);else signals.push('No next follow-up is scheduled.');
+    if(opportunities.length)signals.push(`${opportunities.length} active ${opportunities.map(item=>item.type).join(' and ')} opportunity${opportunities.length===1?' is':'ies are'} open.`);
+    const urgent=/hot/i.test(timeline)||daysSince===null||daysSince>=14||contact.next_follow_up&&dateKey(contact.next_follow_up)<=dateKey(now.toISOString()),title=roles.some(role=>String(role).toLowerCase()==='seller')?'Discuss timing and next steps':roles.some(role=>String(role).toLowerCase()==='buyer')?'Confirm search priorities and next steps':'Personal follow-up',due=new Date(now);due.setDate(due.getDate()+(urgent?0:2));due.setHours(9,0,0,0);
+    return {contact,name,signals,openTasks:tasks.length,recommendation:title,reason:urgent?'This relationship has a time-sensitive or missing follow-up signal.':'A proactive touch keeps the relationship moving before it becomes overdue.',task:{title,contact_id:contact.id,due_at:`${due.getFullYear()}-${String(due.getMonth()+1).padStart(2,'0')}-${String(due.getDate()).padStart(2,'0')}T09:00`,priority:urgent?'High':'Medium',notes:`Assistant recommendation for ${name}: ${signals.join(' ')}`}};
+  }
+
+  function buildBusinessCoach(data={},nowValue=new Date()){
+    const contacts=data.contacts||[],opportunities=(data.opportunities||[]).filter(item=>isOpen(item.status)),listings=(data.listings||[]).filter(item=>['active','coming soon'].includes(String(item.status||'').toLowerCase())),transactions=(data.transactions||[]).filter(item=>!['closed','cancelled'].includes(String(item.status||'').toLowerCase())),issues=[];
+    const activeIds=new Set(opportunities.map(item=>Number(item.contact_id))),withoutFollowUp=contacts.filter(item=>activeIds.has(Number(item.id))&&!item.next_follow_up),missingContact=contacts.filter(item=>activeIds.has(Number(item.id))&&(!item.phone||!item.email)),staleListings=listings.filter(item=>Number(item.showings||0)===0||Number(item.offers||0)===0),incompleteDeals=transactions.filter(item=>!item.closing_date||!item.inspection_date||(!item.buyer_id&&!item.seller_id&&!item.co_seller_id));
+    if(withoutFollowUp.length)issues.push({title:`${withoutFollowUp.length} active contact${withoutFollowUp.length===1?' has':'s have'} no next follow-up`,detail:'Add a specific date so these opportunities stay visible on the calendar.',route:'contacts',kind:'contacts'});
+    if(missingContact.length)issues.push({title:`${missingContact.length} active contact${missingContact.length===1?' is':'s are'} missing phone or email`,detail:'Complete the contact record before the next outreach.',route:'contacts',kind:'contacts'});
+    if(staleListings.length)issues.push({title:`${staleListings.length} listing${staleListings.length===1?' needs':'s need'} an activity review`,detail:'Review recorded showings, offers, feedback, pricing, and marketing follow-up.',route:'listings',kind:'listings'});
+    if(incompleteDeals.length)issues.push({title:`${incompleteDeals.length} transaction${incompleteDeals.length===1?' has':'s have'} missing risk-control information`,detail:'Confirm parties and critical dates before the next deadline.',route:'transactions',kind:'transactions'});
+    return {issues,headline:issues.length?`${issues.length} business gap${issues.length===1?'':'s'} are worth fixing.`:'Your core CRM records look organized right now.'};
+  }
+
+  function buildDealRisks(data={},nowValue=new Date()){
+    const now=new Date(nowValue),items=[];for(const transaction of data.transactions||[]){if(['closed','cancelled'].includes(String(transaction.status||'').toLowerCase()))continue;const missing=[];if(!transaction.buyer_id)missing.push('buyer');if(!transaction.seller_id&&!transaction.co_seller_id)missing.push('seller');if(!transaction.inspection_date)missing.push('inspection date');if(!transaction.closing_date)missing.push('closing date');const close=transaction.closing_date?new Date(transaction.closing_date):null,days=close&&!Number.isNaN(close.getTime())?Math.ceil((close-now)/DAY):null;if(missing.length||days!==null&&days<=7)items.push({id:transaction.id,title:transaction.property||'Transaction',detail:[missing.length?`Missing ${missing.join(', ')}`:'',days!==null?days<0?`Closing is ${Math.abs(days)} days overdue`:`Closing is in ${days} day${days===1?'':'s'}`:''].filter(Boolean).join(' · '),reason:missing.length?'Missing parties or dates can hide responsibilities and deadlines.':'The closing is close enough to confirm every remaining milestone.'})}return {items,headline:items.length?`${items.length} transaction${items.length===1?' needs':'s need'} attention.`:'No current transaction risks were found.'};
+  }
+
+  root.CrmAssistantReasoning={buildAssistantInsights,contactStrategy,buildBusinessCoach,buildDealRisks};
 })(typeof globalThis!=='undefined'?globalThis:this);
