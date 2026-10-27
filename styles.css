@@ -34,6 +34,9 @@
   input,select,textarea,.field input,.field select,.field textarea,#modalForm input,#modalForm select,#modalForm textarea,.search input,.assistant-composer textarea{font-size:16px!important}
 }
 
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@supports (-webkit-touch-callout:none){input,select,textarea{font-size:16px!important;touch-action:manipulation}}
+
 .sync-button{white-space:nowrap}
 .sync-button[data-state="synced"]{color:var(--green);border-color:#b8d5cb;background:var(--green2)}
 .sync-button[data-state="error"]{color:var(--red)}
