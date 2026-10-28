@@ -45,7 +45,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(max-width:720px){
   .sync-button{font-size:11px;padding:8px 9px}
   .sync-button[data-state="synced"]{font-size:0}
-  .sync-button[data-state="synced"]::after{content:'âœ“';font-size:15px}
+  .sync-button[data-state="synced"]::after{content:'✓';font-size:15px}
 }
 
 /* Paradise Property Brokers Inc-inspired warm neutral palette. */
@@ -143,7 +143,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     place-items:center;
     font-size:0;
   }
-  #quickAdd::after{content:'ï¼‹';font-size:24px;line-height:1}
+  #quickAdd::after{content:'＋';font-size:24px;line-height:1}
   .notification-button{
     grid-area:alerts;
     width:48px;
