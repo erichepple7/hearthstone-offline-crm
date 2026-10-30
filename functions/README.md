@@ -13,24 +13,12 @@ The function only authorizes the Firebase user `erichepple7@gmail.com`. It does 
 
 ## Gmail connection
 
-The CRM also includes a private Gmail integration for `erichepple7@gmail.com`.
-It sends reviewed email, imports matching Gmail conversations into Contacts, and
-keeps OAuth refresh tokens in an owner-only server document. Tokens are never
-returned to the browser or included in the public GitHub Pages files.
+Gmail uses Google's free browser authorization. The public OAuth client ID may
+be stored in `gmail-integration.js`; no client secret or Google password is
+stored. Configure the Web client for `https://erichepple7.github.io`, enable the
+Gmail API, and add `erichepple7@gmail.com` as the OAuth test user.
 
-One-time Google Cloud setup:
-
-1. Enable the Gmail API in the `hearthstone-real-estate-crm` Google Cloud project.
-2. Configure the OAuth consent screen for a personal-use external app and add
-   `erichepple7@gmail.com` as the authorized/test user.
-3. Create a Web application OAuth client.
-4. Add this authorized redirect URI exactly:
-   `https://us-central1-hearthstone-real-estate-crm.cloudfunctions.net/gmailOAuthCallback`
-5. Save the credentials with:
-   `firebase functions:secrets:set GMAIL_CLIENT_ID`
-   and `firebase functions:secrets:set GMAIL_CLIENT_SECRET`.
-6. Deploy `gmailConnect,gmailOAuthCallback,gmailStatus,gmailDisconnect,gmailSync,gmailSend`.
-7. Open Inbox & Drafts in the CRM and select **Connect erichepple7@gmail.com**.
-
-Scopes are deliberately limited to `gmail.send` and `gmail.readonly`. The CRM
-does not delete, archive, mark read, or modify Gmail labels.
+The connection requests only `gmail.send` and `gmail.readonly`. It does not
+delete, archive, mark read, or modify labels. Google access tokens stay in
+browser memory and expire after about one hour, so the CRM may ask the user to
+reconnect. Conversation syncing runs every 10 minutes while the CRM is open.
