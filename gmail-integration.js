@@ -1,7 +1,9 @@
 const GMAIL_BROWSER_CLIENT_ID='694415647324-selfr2lbs54nqnsin9pbmgcs9a3gt0ae.apps.googleusercontent.com';
 const GMAIL_SCOPES='https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly';
 const GMAIL_SYNC_INTERVAL=10*60*1000;
-const crmGmail={connected:false,email:'',lastSyncAt:localStorage.getItem('crm_gmail_last_sync')||'',busy:false,statusLoaded:true,accessToken:'',expiresAt:0,tokenClient:null};
+function storedGmailSession(){try{const saved=JSON.parse(sessionStorage.getItem('crm_gmail_session')||'{}');return saved.accessToken&&Number(saved.expiresAt)>Date.now()+60_000?saved:{}}catch{return{}}}
+const savedGmailSession=storedGmailSession();
+const crmGmail={connected:Boolean(savedGmailSession.accessToken),email:savedGmailSession.email||'',lastSyncAt:localStorage.getItem('crm_gmail_last_sync')||'',busy:false,statusLoaded:true,accessToken:savedGmailSession.accessToken||'',expiresAt:Number(savedGmailSession.expiresAt)||0,tokenClient:null};
 window.crmGmail=crmGmail;
 
 function gmailConfigured(){return GMAIL_BROWSER_CLIENT_ID&&!GMAIL_BROWSER_CLIENT_ID.startsWith('REPLACE_')}
@@ -24,14 +26,14 @@ async function acceptGmailToken(response){
   crmGmail.accessToken=response.access_token;crmGmail.expiresAt=Date.now()+(Number(response.expires_in)||3600)*1000;crmGmail.connected=true;
   const profile=await gmailApi('/profile');
   if(String(profile.emailAddress||'').toLowerCase()!==CRM_EMAIL_ACCOUNT){disconnectGmail({quiet:true});throw Error(`Connect ${CRM_EMAIL_ACCOUNT}, not another Google account.`)}
-  crmGmail.email=String(profile.emailAddress||'');renderGmailConnection();await syncGmail({manual:true});
+  crmGmail.email=String(profile.emailAddress||'');sessionStorage.setItem('crm_gmail_session',JSON.stringify({email:crmGmail.email,accessToken:crmGmail.accessToken,expiresAt:crmGmail.expiresAt}));renderGmailConnection();await syncGmail({manual:true});
 }
 async function connectGmail(){
   try{const client=gmailTokenClient();client.callback=response=>acceptGmailToken(response).catch(error=>{disconnectGmail({quiet:true});toast(error.message,true)});client.requestAccessToken({prompt:'consent',hint:CRM_EMAIL_ACCOUNT})}catch(error){toast(error.message,true)}
 }
 function disconnectGmail({quiet=false}={}){
   const token=crmGmail.accessToken;if(token&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(token,()=>{});
-  Object.assign(crmGmail,{connected:false,email:'',accessToken:'',expiresAt:0,busy:false});renderGmailConnection();if(!quiet)toast('Gmail disconnected. Existing CRM history was kept.');
+  sessionStorage.removeItem('crm_gmail_session');Object.assign(crmGmail,{connected:false,email:'',accessToken:'',expiresAt:0,busy:false});renderGmailConnection();if(!quiet)toast('Gmail disconnected. Existing CRM history was kept.');
 }
 function gmailMessageKey(activity){return String(activity?.metadata?.gmail_message_id||'')}
 function gmailDecode(data=''){try{const binary=atob(String(data).replace(/-/g,'+').replace(/_/g,'/')),bytes=Uint8Array.from(binary,char=>char.charCodeAt(0));return new TextDecoder().decode(bytes)}catch{return''}}
