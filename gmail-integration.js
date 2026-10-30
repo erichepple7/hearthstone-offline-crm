@@ -45,8 +45,9 @@ function gmailMessageForCrm(message,contactMap){const headers=gmailHeaders(messa
 async function gmailMessagesForContacts(contacts){
   const contactMap=new Map(contacts.map(contact=>[String(contact.email||'').trim().toLowerCase(),{id:Number(contact.id)}]).filter(([email,contact])=>email&&contact.id)),after=crmGmail.lastSyncAt?Math.max(0,Math.floor(new Date(crmGmail.lastSyncAt).getTime()/1000)-300):0,query=after?`after:${after}`:'newer_than:90d';
   // Keep the browser-only connection comfortably below Gmail's per-user query limit.
-  // The first pass imports the 20 newest messages; later 10-minute checks only request new mail.
-  const result=await gmailApi(`/messages?maxResults=20&q=${encodeURIComponent(query)}`),ids=(result.messages||[]).map(item=>item.id);
+  // Ten full-message reads plus the list request stay below the project's per-minute quota.
+  // Later 10-minute checks only request mail that arrived after the previous successful sync.
+  const result=await gmailApi(`/messages?maxResults=10&q=${encodeURIComponent(query)}`),ids=(result.messages||[]).map(item=>item.id);
   const messages=[];for(let start=0;start<ids.length;start+=10){const batch=ids.slice(start,start+10);messages.push(...await Promise.all(batch.map(id=>gmailApi(`/messages/${encodeURIComponent(id)}?format=full`))))}
   return messages.map(message=>gmailMessageForCrm(message,contactMap)).filter(Boolean).sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at)));
 }
