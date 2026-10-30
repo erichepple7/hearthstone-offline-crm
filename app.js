@@ -666,7 +666,8 @@ views.listings=async()=>{
 };
 const transactionGroups=[
  {key:'under-contract',label:'Under Contract',statuses:['Under Contract','Contingent','Delayed']},
- {key:'closed',label:'Closed',statuses:['Closed','Cancelled']}
+ {key:'closed',label:'Closed',statuses:['Closed']},
+ {key:'cancelled',label:'Cancelled',statuses:['Cancelled']}
 ];
 let selectedTransactionGroup='under-contract';
 function transactionGroupCard(transaction){
@@ -675,7 +676,7 @@ function transactionGroupCard(transaction){
 }
 function drawTransactionGroup(groupKey=selectedTransactionGroup){
  selectedTransactionGroup=groupKey;const group=transactionGroups.find(item=>item.key===groupKey)||transactionGroups[0],transactions=sortedTransactions(state.data.transactions||[]).filter(item=>group.statuses.includes(String(item.status||''))),panel=$('#transactionGroupPanel');if(!panel)return;
- $$('.transaction-group-tab').forEach(button=>button.classList.toggle('active',button.dataset.transactionGroup===group.key));panel.innerHTML=transactions.length?`<div class="sold-grid">${transactions.map(transactionGroupCard).join('')}</div>`:empty(`No ${group.label.toLowerCase()} transactions`,group.key==='under-contract'?'Deals marked Under Contract, Contingent, or Delayed will appear here.':'Completed and cancelled transactions will appear here.');
+ $$('.transaction-group-tab').forEach(button=>button.classList.toggle('active',button.dataset.transactionGroup===group.key));panel.innerHTML=transactions.length?`<div class="sold-grid">${transactions.map(transactionGroupCard).join('')}</div>`:empty(`No ${group.label.toLowerCase()} transactions`,group.key==='under-contract'?'Deals marked Under Contract, Contingent, or Delayed will appear here.':group.key==='closed'?'Completed transactions will appear here.':'Cancelled transactions will appear here.');
  $$('[data-group-transaction]',panel).forEach(card=>card.onclick=event=>{if(!event.target.closest('button,a'))showTransactionRecord(Number(card.dataset.groupTransaction))});$$('.transaction-group-open',panel).forEach(button=>button.onclick=()=>showTransactionRecord(Number(button.dataset.id)));$$('.transaction-group-edit',panel).forEach(button=>button.onclick=()=>{const transaction=(state.data.transactions||[]).find(item=>Number(item.id)===Number(button.dataset.id));if(transaction)openForm('transactions',transaction,transaction.id)})
 }
 const transactionsBeforeGroupedTabs=views.transactions;
