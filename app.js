@@ -307,6 +307,7 @@ const fields={
  tasks:[['title','Task','text',1],['contact_id','Linked contact','contact'],['listing_id','Linked listing / showing property','listing'],['transaction_id','Linked transaction','transaction'],['due_at','Start date and time','datetime-local',1],['end_at','End date and time','datetime-local'],['reminder_minutes','Remind me','select',[[0,'No reminder'],[60,'1 hour before'],[120,'2 hours before'],[1440,'1 day before'],[2880,'2 days before']]],['priority','Priority','select',['High','Medium','Low']],['notes','Notes','textarea']],
  activities:[['contact_id','Contact','contact'],['type','Activity type','select',['Call','Text','Email','Note','Showing','Offer','Appointment','Status Change','Transaction']],['direction','Direction','select',['','Incoming','Outgoing']],['subject','Subject / summary','text'],['body','Details','textarea'],['occurred_at','Date','date']]
 };
+for(const key of ['buyer_timeline','seller_timeline']){const timelineField=fields.contacts.find(field=>field[0]===key);if(timelineField&&!timelineField[3].includes('1+ year'))timelineField[3].push('1+ year')}
 fields.listings.splice(3,0,['co_seller_id','Co-Seller','contact']);
 fields.transactions.splice(4,0,['co_seller_id','Co-Seller','contact']);
 fields.contacts.splice(fields.contacts.findIndex(field=>field[0]==='last_contact'),0,['follow_up_mode','Follow-up cadence','select',['Automatic','Review each time','Paused']]);
@@ -484,7 +485,7 @@ document.addEventListener('click',e=>{const action=e.target.closest('[data-comm-
 document.addEventListener('click',e=>{const n=e.target.closest('.navitem');if(n?.dataset.view)go(n.dataset.view)});$('#quickAdd').onclick=()=>openForm('contacts');$('#closeModal').onclick=closeModal;$('#modal').onclick=e=>{if(e.target.id==='modal')closeModal()};$('#menuBtn').onclick=()=>$('.sidebar').classList.contains('open')?closeMenu():openMenu();$('#closeMenuBtn').onclick=closeMenu;$('#menuBackdrop').onclick=closeMenu;
 async function openActionPlanPicker(contact){
  await load('action_plans');
- const roles=(contact.roles||[]).map(role=>String(role).toLowerCase()),timelineRank={hot:0,soon:1,later:2},timelineCode=value=>String(value||'').toLowerCase().startsWith('hot')?'hot':String(value||'').includes('1–3')||String(value||'').includes('1-3')?'soon':String(value||'').includes('3+')?'later':'';
+ const roles=(contact.roles||[]).map(role=>String(role).toLowerCase()),timelineRank={hot:0,soon:1,later:2,longterm:3},timelineCode=value=>{const text=String(value||'').toLowerCase();return text.startsWith('hot')?'hot':text.includes('1+ year')||text.includes('1 year')?'longterm':text.includes('1–3')||text.includes('1-3')?'soon':text.includes('3+')?'later':''};
  const plans=(state.data.action_plans||[]).filter(plan=>plan.active&&(['buyer','seller'].includes(String(plan.source||'').toLowerCase())?roles.includes(String(plan.source).toLowerCase()):String(plan.source||'').toLowerCase()===String(contact.source||'').toLowerCase())).sort((a,b)=>(timelineRank[a.timeline]??9)-(timelineRank[b.timeline]??9)||String(a.name).localeCompare(String(b.name)));
  if(!plans.length)return toast('No matching action plans are available for this contact',true);
  const recommended=plans.find(plan=>String(plan.source).toLowerCase()==='buyer'&&plan.timeline===timelineCode(contact.buyer_timeline))||plans.find(plan=>String(plan.source).toLowerCase()==='seller'&&plan.timeline===timelineCode(contact.seller_timeline))||plans[0];
@@ -541,6 +542,7 @@ function followUpCadenceDays(contact){
  if(contact.follow_up_mode==='Paused')return null;
  if(text.includes('hot'))return 2;
  if(text.includes('1–3')||text.includes('1-3'))return 7;
+ if(text.includes('1+ year')||text.includes('1 year'))return 90;
  if(text.includes('3+'))return 30;
  if(roles.includes('past client'))return 90;
  const opportunity=(state.data.opportunities||[]).find(item=>Number(item.contact_id)===Number(contact.id)&&item.status!=='closed'&&!['Closed','Nurture/Lost'].includes(item.stage));
