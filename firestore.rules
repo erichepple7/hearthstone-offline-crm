@@ -15,6 +15,11 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    match /public_listing_files/{fileChunkId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
     match /open_house_submissions/{submissionId} {
       allow create: if request.auth == null
         && request.resource.data.keys().hasOnly([
