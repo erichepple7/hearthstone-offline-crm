@@ -22,3 +22,17 @@ The connection requests only `gmail.send` and `gmail.readonly`. It does not
 delete, archive, mark read, or modify labels. Google access tokens stay in
 browser memory and expire after about one hour, so the CRM may ask the user to
 reconnect. Conversation syncing runs every 10 minutes while the CRM is open.
+
+## Automatic morning briefing
+
+`sendDailyCrmBrief` runs every day at 7:00 AM America/Chicago. It reads the
+owner's synced `main-v2` CRM record, builds the same action-first briefing used
+by the browser, and sends it from and to `erichepple7@gmail.com`. A dated
+Firestore receipt prevents duplicate cloud sends.
+
+Activation requires the Firebase Blaze plan because scheduled functions and
+Secret Manager are not available on Spark. After upgrading, create a Google app
+password for `erichepple7@gmail.com`, store it with
+`firebase functions:secrets:set GMAIL_APP_PASSWORD`, and deploy
+`functions:sendDailyCrmBrief`. The app password must never be committed to this
+repository.
