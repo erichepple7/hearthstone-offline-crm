@@ -27,6 +27,7 @@ const fresh=()=>({version:1,device_id:crypto.randomUUID(),tables:Object.fromEntr
 function seed(state){
  state.tables??={};for(const table of tableNames)state.tables[table]??=[];state.deleted??={};
  for(const contact of state.tables.contacts||[]){const latest=(state.tables.activities||[]).filter(activity=>Number(activity.contact_id)===Number(contact.id)).map(activity=>activity.occurred_at||activity.created_at).filter(Boolean).sort().at(-1);if(latest&&(!contact.last_contact||Date.parse(latest)>Date.parse(contact.last_contact)))contact.last_contact=latest}
+ for(const transaction of state.tables.transactions||[]){if(transaction.representation_side==='Buyer'&&!transaction.buyer_agent_id)transaction.buyer_agent_id='me';if(transaction.representation_side==='Seller'&&!transaction.seller_agent_id)transaction.seller_agent_id='me'}
  state.tables.tasks=(state.tables.tasks||[]).map(task=>{const normalized={priority:'Medium',reminder_minutes:0,completed_at:null,reminder_sent_at:null,...task};if(!String(normalized.status||'').trim())normalized.status=normalized.completed_at?'completed':'open';if(normalized.status==='open'&&normalized.action_plan_id&&/^Action plan:/i.test(String(normalized.notes||''))&&/^\d{4}-\d{2}-\d{2}T1[45]:00/.test(String(normalized.due_at||''))){normalized.due_at=`${String(normalized.due_at).slice(0,10)}T09:00`;normalized._modified_at=new Date().toISOString()}return normalized});
  const nurtureKeys=new Set();state.tables.tasks=state.tables.tasks.filter(task=>{if(task.status!=='open'||!task.automation_key)return true;if(nurtureKeys.has(task.automation_key))return false;nurtureKeys.add(task.automation_key);return true});
  const taskTimes=new Map(state.tables.tasks.map(task=>[Number(task.id),task.due_at]));state.tables.communication_drafts=(state.tables.communication_drafts||[]).map(draft=>{const dueAt=taskTimes.get(Number(draft.linked_task_id));return dueAt&&draft.due_at!==dueAt?{...draft,due_at:dueAt,_modified_at:new Date().toISOString()}:draft});
@@ -131,7 +132,7 @@ async function offlineDocumentUrl(url){const match=url.match(/\/(contact|transac
 async function downloadOfflineDocument(url){const match=url.match(/\/(contact|transaction|listing|task|general)-documents\/(\d+)/);if(!match)return;const state=await read(),doc=state.tables[`${match[1]}_documents`].find(x=>x.id===Number(match[2]));if(!doc)return;try{const a=document.createElement('a');a.href=doc.data||await window.crmCloudFiles?.fetchDocument(doc);a.download=doc.filename;a.click()}catch(error){alert(error.message)}}
 
 const listBeforeCoBuyer=list;
-list=(state,table)=>{const rows=listBeforeCoBuyer(state,table);return table==='transactions'?rows.map(row=>({...row,co_buyer_name:contactName(state,row.co_buyer_id)})):rows};
+list=(state,table)=>{const rows=listBeforeCoBuyer(state,table);return table==='transactions'?rows.map(row=>({...row,co_buyer_name:contactName(state,row.co_buyer_id),buyer_agent_name:row.buyer_agent_id==='me'?'Eric Hepple':contactName(state,row.buyer_agent_id),seller_agent_name:row.seller_agent_id==='me'?'Eric Hepple':contactName(state,row.seller_agent_id)})):rows};
 const syncTransactionPartiesBeforeCoBuyer=syncTransactionSellerOpportunities;
 syncTransactionSellerOpportunities=(state,transaction)=>{
  syncTransactionPartiesBeforeCoBuyer(state,transaction);
@@ -145,4 +146,6 @@ syncTransactionSellerOpportunities=(state,transaction)=>{
  }
 };
 const removeBeforeCoBuyer=remove;
-remove=(state,table,id)=>{removeBeforeCoBuyer(state,table,id);if(table==='contacts')for(const transaction of state.tables.transactions||[])if(Number(transaction.co_buyer_id)===Number(id))Object.assign(transaction,touch({...transaction,co_buyer_id:null}))};
+remove=(state,table,id)=>{removeBeforeCoBuyer(state,table,id);if(table==='contacts')for(const transaction of state.tables.transactions||[]){const update={};if(Number(transaction.co_buyer_id)===Number(id))update.co_buyer_id=null;if(Number(transaction.buyer_agent_id)===Number(id))update.buyer_agent_id=null;if(Number(transaction.seller_agent_id)===Number(id))update.seller_agent_id=null;if(Object.keys(update).length)Object.assign(transaction,touch({...transaction,...update}))}};
+const ensurePendingListingTransactionBeforeAgents=ensurePendingListingTransaction;
+ensurePendingListingTransaction=(state,listing)=>{const transaction=ensurePendingListingTransactionBeforeAgents(state,listing);if(transaction&&transaction.representation_side==='Seller'&&!transaction.seller_agent_id)Object.assign(transaction,touch({...transaction,seller_agent_id:'me'}));return transaction};
