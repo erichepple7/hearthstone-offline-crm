@@ -2,6 +2,7 @@ const GMAIL_BROWSER_CLIENT_ID='694415647324-selfr2lbs54nqnsin9pbmgcs9a3gt0ae.app
 const GMAIL_SCOPES='https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.events';
 const GOOGLE_SCOPE_VERSION=2;
 const GMAIL_SYNC_INTERVAL=10*60*1000;
+const GMAIL_REDIRECT_PENDING='crm_gmail_redirect_pending';
 function storedGmailSession(){try{const saved=JSON.parse(sessionStorage.getItem('crm_gmail_session')||'{}');return saved.scopeVersion===GOOGLE_SCOPE_VERSION&&saved.accessToken&&Number(saved.expiresAt)>Date.now()+60_000?saved:{}}catch{return{}}}
 const savedGmailSession=storedGmailSession();
 const crmGmail={connected:Boolean(savedGmailSession.accessToken),email:savedGmailSession.email||'',lastSyncAt:localStorage.getItem('crm_gmail_last_sync')||'',busy:false,statusLoaded:true,accessToken:savedGmailSession.accessToken||'',expiresAt:Number(savedGmailSession.expiresAt)||0,tokenClient:null};
@@ -29,8 +30,17 @@ async function acceptGmailToken(response){
   if(String(profile.emailAddress||'').toLowerCase()!==CRM_EMAIL_ACCOUNT){disconnectGmail({quiet:true});throw Error(`Connect ${CRM_EMAIL_ACCOUNT}, not another Google account.`)}
   crmGmail.email=String(profile.emailAddress||'');sessionStorage.setItem('crm_gmail_session',JSON.stringify({email:crmGmail.email,accessToken:crmGmail.accessToken,expiresAt:crmGmail.expiresAt,scopeVersion:GOOGLE_SCOPE_VERSION}));renderGmailConnection();await syncGmail({manual:true});await runCrmGoogleAutomation({manual:false});
 }
+function appleMobileBrowser(){return /iPad|iPhone|iPod/.test(navigator.userAgent)||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1}
+async function connectGmailWithRedirect(){
+  if(!window.firebase?.auth||!firebase.apps?.length)throw Error('Google sign-in is preparing. Try again in a moment.');
+  const provider=new firebase.auth.GoogleAuthProvider();for(const scope of GMAIL_SCOPES.split(/\s+/).filter(Boolean))provider.addScope(scope);provider.setCustomParameters({login_hint:CRM_EMAIL_ACCOUNT,prompt:'consent'});localStorage.setItem(GMAIL_REDIRECT_PENDING,'1');await firebase.auth().signInWithRedirect(provider)
+}
+async function resumeGmailRedirect(){
+  if(localStorage.getItem(GMAIL_REDIRECT_PENDING)!=='1'||!window.firebase?.auth||!firebase.apps?.length)return;
+  try{const result=await firebase.auth().getRedirectResult(),credential=result?.credential||firebase.auth.GoogleAuthProvider.credentialFromResult?.(result),token=credential?.accessToken;if(!token)throw Error('Google returned without Gmail permission. Tap Connect and approve Gmail and Calendar access.');await acceptGmailToken({access_token:token,expires_in:3600});localStorage.removeItem(GMAIL_REDIRECT_PENDING)}catch(error){localStorage.removeItem(GMAIL_REDIRECT_PENDING);renderGmailConnection();toast(error.message||'Google sign-in did not finish.',true)}
+}
 async function connectGmail(){
-  try{const client=gmailTokenClient();client.callback=response=>acceptGmailToken(response).catch(error=>{disconnectGmail({quiet:true});toast(error.message,true)});client.requestAccessToken({prompt:'consent',hint:CRM_EMAIL_ACCOUNT})}catch(error){toast(error.message,true)}
+  try{if(appleMobileBrowser())return await connectGmailWithRedirect();const client=gmailTokenClient();client.callback=response=>acceptGmailToken(response).catch(error=>{disconnectGmail({quiet:true});toast(error.message,true)});client.requestAccessToken({prompt:'consent',hint:CRM_EMAIL_ACCOUNT})}catch(error){toast(error.message,true)}
 }
 function disconnectGmail({quiet=false}={}){
   const token=crmGmail.accessToken;if(token&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(token,()=>{});
@@ -118,4 +128,5 @@ async function openCrmEmailComposer(contactId,{subject='',body='',draftId=null,l
 const inboxBeforeGmail=views.inbox;views.inbox=async()=>{await inboxBeforeGmail();addGmailConnectionCard()};
 document.addEventListener('click',event=>{const contactLink=event.target.closest('[data-gmail-contact]');if(!contactLink)return;const channel=$('#reviewChannel')?.value;if(contactLink.id==='openDraftApp'&&channel&&channel!=='Email')return;event.preventDefault();event.stopImmediatePropagation();openCrmEmailComposer(Number(contactLink.dataset.gmailContact),{subject:$('#reviewSubject')?.value||'',body:$('#reviewBody')?.value||'',draftId:Number(contactLink.dataset.draftId)||null,linkedTaskId:Number(contactLink.dataset.linkedTaskId)||null})},true);
 window.addEventListener('online',()=>{if(!gmailAccessValid())return;syncGmail();runCrmGoogleAutomation({manual:false})});setInterval(()=>{if(!gmailAccessValid()||document.visibilityState!=='visible')return;syncGmail();runCrmGoogleAutomation({manual:false})},GMAIL_SYNC_INTERVAL);setTimeout(()=>runCrmGoogleAutomation({manual:false}),2000);
+window.addEventListener('crm:firebase-ready',resumeGmailRedirect);setTimeout(resumeGmailRedirect,2500);
 function ensureGmailConnectionCard(attempt=0){if(state.view!=='inbox')return;if($('.inbox-grid')){addGmailConnectionCard();return}if(attempt<30)setTimeout(()=>ensureGmailConnectionCard(attempt+1),100)}setTimeout(()=>ensureGmailConnectionCard(),0);
