@@ -7,6 +7,7 @@ function storedGmailSession(){try{const saved=JSON.parse(sessionStorage.getItem(
 const savedGmailSession=storedGmailSession();
 const crmGmail={connected:Boolean(savedGmailSession.accessToken),email:savedGmailSession.email||'',lastSyncAt:localStorage.getItem('crm_gmail_last_sync')||'',busy:false,statusLoaded:true,accessToken:savedGmailSession.accessToken||'',expiresAt:Number(savedGmailSession.expiresAt)||0,tokenClient:null};
 window.crmGmail=crmGmail;
+let gmailRedirectResumePromise=null;
 
 function gmailConfigured(){return GMAIL_BROWSER_CLIENT_ID&&!GMAIL_BROWSER_CLIENT_ID.startsWith('REPLACE_')}
 function gmailAccessValid(){return crmGmail.connected&&crmGmail.accessToken&&Date.now()<crmGmail.expiresAt-60_000}
@@ -23,6 +24,10 @@ function gmailTokenClient(){
   if(!crmGmail.tokenClient)crmGmail.tokenClient=google.accounts.oauth2.initTokenClient({client_id:GMAIL_BROWSER_CLIENT_ID,scope:GMAIL_SCOPES,callback:()=>{}});
   return crmGmail.tokenClient;
 }
+function prepareGoogleOAuth(timeout=12000){
+  if(window.google?.accounts?.oauth2)return Promise.resolve(true);
+  return new Promise(resolve=>{const started=Date.now(),timer=setInterval(()=>{if(window.google?.accounts?.oauth2){clearInterval(timer);resolve(true)}else if(Date.now()-started>=timeout){clearInterval(timer);resolve(false)}},100)})
+}
 async function acceptGmailToken(response){
   if(response.error)throw Error(response.error_description||'Google did not connect Gmail.');
   crmGmail.accessToken=response.access_token;crmGmail.expiresAt=Date.now()+(Number(response.expires_in)||3600)*1000;crmGmail.connected=true;
@@ -37,10 +42,11 @@ async function connectGmailWithRedirect(){
 }
 async function resumeGmailRedirect(){
   if(localStorage.getItem(GMAIL_REDIRECT_PENDING)!=='1'||!window.firebase?.auth||!firebase.apps?.length)return;
-  try{const result=await firebase.auth().getRedirectResult(),credential=result?.credential||firebase.auth.GoogleAuthProvider.credentialFromResult?.(result),token=credential?.accessToken;if(!token)throw Error('Google returned without Gmail permission. Tap Connect and approve Gmail and Calendar access.');await acceptGmailToken({access_token:token,expires_in:3600});localStorage.removeItem(GMAIL_REDIRECT_PENDING)}catch(error){localStorage.removeItem(GMAIL_REDIRECT_PENDING);renderGmailConnection();toast(error.message||'Google sign-in did not finish.',true)}
+  if(gmailRedirectResumePromise)return gmailRedirectResumePromise;
+  gmailRedirectResumePromise=(async()=>{try{const result=await firebase.auth().getRedirectResult(),credential=result?.credential||firebase.auth.GoogleAuthProvider.credentialFromResult?.(result),token=credential?.accessToken;if(!token){await prepareGoogleOAuth();throw Error('Safari did not return Gmail permission. Tap Connect once more to finish in the Google window.')}await acceptGmailToken({access_token:token,expires_in:3600});localStorage.removeItem(GMAIL_REDIRECT_PENDING)}catch(error){localStorage.removeItem(GMAIL_REDIRECT_PENDING);renderGmailConnection();toast(error.message||'Google sign-in did not finish.',true)}finally{gmailRedirectResumePromise=null}})();return gmailRedirectResumePromise
 }
 async function connectGmail(){
-  try{if(appleMobileBrowser())return await connectGmailWithRedirect();const client=gmailTokenClient();client.callback=response=>acceptGmailToken(response).catch(error=>{disconnectGmail({quiet:true});toast(error.message,true)});client.requestAccessToken({prompt:'consent',hint:CRM_EMAIL_ACCOUNT})}catch(error){toast(error.message,true)}
+  try{if(!window.google?.accounts?.oauth2){prepareGoogleOAuth();toast('Google sign-in is preparing. Tap Connect again in a moment.');return}const client=gmailTokenClient();client.callback=response=>acceptGmailToken(response).catch(error=>{disconnectGmail({quiet:true});toast(error.message,true)});client.requestAccessToken({prompt:'consent',hint:CRM_EMAIL_ACCOUNT})}catch(error){toast(error.message,true)}
 }
 function disconnectGmail({quiet=false}={}){
   const token=crmGmail.accessToken;if(token&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(token,()=>{});
@@ -128,5 +134,5 @@ async function openCrmEmailComposer(contactId,{subject='',body='',draftId=null,l
 const inboxBeforeGmail=views.inbox;views.inbox=async()=>{await inboxBeforeGmail();addGmailConnectionCard()};
 document.addEventListener('click',event=>{const contactLink=event.target.closest('[data-gmail-contact]');if(!contactLink)return;const channel=$('#reviewChannel')?.value;if(contactLink.id==='openDraftApp'&&channel&&channel!=='Email')return;event.preventDefault();event.stopImmediatePropagation();openCrmEmailComposer(Number(contactLink.dataset.gmailContact),{subject:$('#reviewSubject')?.value||'',body:$('#reviewBody')?.value||'',draftId:Number(contactLink.dataset.draftId)||null,linkedTaskId:Number(contactLink.dataset.linkedTaskId)||null})},true);
 window.addEventListener('online',()=>{if(!gmailAccessValid())return;syncGmail();runCrmGoogleAutomation({manual:false})});setInterval(()=>{if(!gmailAccessValid()||document.visibilityState!=='visible')return;syncGmail();runCrmGoogleAutomation({manual:false})},GMAIL_SYNC_INTERVAL);setTimeout(()=>runCrmGoogleAutomation({manual:false}),2000);
-window.addEventListener('crm:firebase-ready',resumeGmailRedirect);setTimeout(resumeGmailRedirect,2500);
+prepareGoogleOAuth();window.addEventListener('crm:firebase-ready',resumeGmailRedirect);setTimeout(resumeGmailRedirect,2500);
 function ensureGmailConnectionCard(attempt=0){if(state.view!=='inbox')return;if($('.inbox-grid')){addGmailConnectionCard();return}if(attempt<30)setTimeout(()=>ensureGmailConnectionCard(attempt+1),100)}setTimeout(()=>ensureGmailConnectionCard(),0);
