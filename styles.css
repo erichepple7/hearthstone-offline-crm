@@ -216,6 +216,25 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(max-width:720px){.briefing-grid{grid-template-columns:1fr 1fr}.health-row{align-items:flex-start;flex-direction:column}.health-actions{width:100%;justify-content:stretch}.health-actions .btn{flex:1}.intelligence-section table{min-width:720px}}
 .contract-review{display:grid;gap:14px}.contract-review-list{display:grid;gap:8px}.contract-review-row{display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:9px;background:#faf8f4;cursor:pointer}.contract-review-row input{flex:0 0 auto;width:20px;height:20px;margin-top:2px;accent-color:var(--green)}.contract-review-row span{display:grid;gap:4px}.contract-review-row small{color:var(--muted);line-height:1.4}.contract-review .assistant-pending-review{margin:0}
 .contract-task-row>span{width:100%;grid-template-columns:1fr 220px}.contract-task-row>span>strong,.contract-task-row>span>small{grid-column:1/-1}.contract-task-row .field{display:grid;gap:5px}.contract-task-row .field span{display:block}.contract-task-row .field input{width:100%;height:auto;min-height:44px;margin:0;padding:10px 12px;accent-color:auto}@media(max-width:700px){.contract-task-row>span{grid-template-columns:1fr}}
+
+/* Contract review uses a fixed title and approval bar around a readable, scrollable body. */
+.modal-card:has(#modalForm>.contract-review){width:min(1040px,calc(100vw - 48px));max-height:calc(100dvh - 48px);display:flex;flex-direction:column;overflow:hidden}
+.modal-card:has(#modalForm>.contract-review) .modal-head{flex:0 0 auto;background:#fff;z-index:3}
+#modalForm:has(>.contract-review){min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;-webkit-overflow-scrolling:touch}
+#modalForm>.contract-review{padding:22px 26px 0}
+.contract-review h3{margin:6px 0 0;font:22px Georgia,serif}
+.contract-review-row>span{min-width:0;overflow-wrap:anywhere}
+.contract-task-row>span{min-width:0}
+.contract-task-row .field{min-width:0}
+.contract-task-row .field input{min-width:0}
+.contract-review>.form-actions{position:sticky;bottom:0;z-index:4;margin:4px -26px 0;padding:16px 26px;background:#fff;border-top:1px solid var(--line);box-shadow:0 -10px 22px rgba(20,50,48,.08)}
+.contract-review>.form-actions .primary{margin-left:0}
+@media(max-width:720px){
+ .modal-card:has(#modalForm>.contract-review){width:100%;max-height:100dvh}
+ #modalForm>.contract-review{padding:16px 16px 0}
+ .contract-review>.form-actions{margin-inline:-16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:grid;grid-template-columns:auto 1fr}
+ .contract-review>.form-actions .btn{min-height:48px;white-space:normal}
+}
 .briefing-signals>p{line-height:1.55}.briefing-signals strong{color:var(--ink)}
 .assistant-mode{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#f7f3ec;color:var(--ink)}.assistant-mode span{flex:0 0 auto;padding:6px 9px;border-radius:999px;background:#e8eee9;color:var(--green);font-size:11px;font-weight:800}.assistant-mode.offline span{background:#eee5d8;color:#745e43}.assistant-mode small{color:var(--muted);line-height:1.4}.assistant-feedback{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid rgba(96,86,75,.14);color:var(--muted);font-size:11px}.assistant-feedback button{border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);padding:5px 9px;font:inherit;font-weight:700;cursor:pointer}.assistant-feedback button:hover{border-color:var(--gold)}.assistant-ai-source{margin-top:12px!important;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}.assistant-learning-context{padding:12px;border-radius:8px;background:#f7f3ec}.assistant-learning-context textarea{min-height:110px}.assistant-learning-context p{margin-top:0;color:var(--muted);line-height:1.45}
 @media(max-width:720px){.assistant-mode{align-items:flex-start;flex-direction:column}.assistant-mode small{font-size:11px}.assistant-feedback{gap:8px}.assistant-feedback button{min-height:36px;padding-inline:12px}}
