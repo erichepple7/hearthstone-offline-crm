@@ -4,7 +4,7 @@
   const SDK='https://www.gstatic.com/firebasejs/12.19.0';
   const MODEL='gemini-3.8-flash';
   const APP_CHECK_KEY='crm_firebase_app_check_site_key';
-  const PRODUCTION_APP_CHECK_SITE_KEY='6LfyJykuAAAAALHDZUnX0wjJ1K2hZ2mjXlb3DJxQ';
+  const PRODUCTION_APP_CHECK_SITE_KEY='6LfyJykuAAAAALHDZUnXOwjJ1K2hZ2mjXlb3DJxQ';
   let modelPromise=null;
 
   const clean=value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,1200);
