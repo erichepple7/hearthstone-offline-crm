@@ -4,6 +4,7 @@
   const SDK='https://www.gstatic.com/firebasejs/12.19.0';
   const MODEL='gemini-3.8-flash';
   const APP_CHECK_KEY='crm_firebase_app_check_site_key';
+  const PRODUCTION_APP_CHECK_SITE_KEY='6LfyJykuAAAAALHDZUnX0wjJ1K2hZ2mjXlb3DJxQ';
   let modelPromise=null;
 
   const clean=value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,1200);
@@ -36,7 +37,7 @@
     ]);
     let app;
     try{app=appModule.getApp('gemini-haven')}catch(error){app=appModule.initializeApp(root.crmFirebaseConfig,'gemini-haven')}
-    const siteKey=localStorage.getItem(APP_CHECK_KEY)||root.crmFirebaseAppCheckSiteKey||'';
+    const siteKey=localStorage.getItem(APP_CHECK_KEY)||root.crmFirebaseAppCheckSiteKey||PRODUCTION_APP_CHECK_SITE_KEY;
     if(siteKey){
       try{appCheckModule.initializeAppCheck(app,{provider:new appCheckModule.ReCaptchaEnterpriseProvider(siteKey),isTokenAutoRefreshEnabled:true})}catch(error){if(!/already exists/i.test(String(error?.message||'')))throw error}
     }
