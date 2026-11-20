@@ -2,10 +2,10 @@
   'use strict';
 
   const SDK='https://www.gstatic.com/firebasejs/12.19.0';
-  const MODEL='gemini-3.8-flash';
+  const MODELS=['gemini-3.8-flash','gemini-3.5-flash-lite'];
   const APP_CHECK_KEY='crm_firebase_app_check_site_key';
   const PRODUCTION_APP_CHECK_SITE_KEY='6LfyJykuAAAAALHDZUnXOwjJ1K2hZ2mjXlb3DJxQ';
-  let modelPromise=null;
+  const modelPromises=new Map();
 
   const clean=value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,1200);
   const compactRecord=record=>Object.fromEntries(Object.entries(record||{}).filter(([key,value])=>{
@@ -28,7 +28,7 @@
     };
   }
 
-  async function createModel(){
+  async function createModel(modelName){
     if(!root.crmFirebaseConfig)throw new Error('The CRM Firebase configuration is not ready. Refresh the page and try again.');
     const [appModule,aiModule,appCheckModule]=await Promise.all([
       import(`${SDK}/firebase-app.js`),
@@ -66,7 +66,7 @@
     }});
     const ai=aiModule.getAI(app,{backend:new aiModule.GoogleAIBackend()});
     return aiModule.getGenerativeModel(ai,{
-      model:MODEL,
+      model:modelName,
       systemInstruction:`You are Haven, the operational intelligence inside Eric Hepple's private real-estate CRM. Your reasoning is powered by Gemini. You are not merely a fact finder or day planner. Read the user's instruction, understand the active CRM record and linked records, then prepare the exact CRM action requested.
 
 Rules:
@@ -91,10 +91,12 @@ Return a useful answer plus evidence and every exact action required. If no acti
     });
   }
 
-  function getModel(){
-    if(!modelPromise)modelPromise=createModel().catch(error=>{modelPromise=null;throw error});
-    return modelPromise;
+  function getModel(modelName){
+    if(!modelPromises.has(modelName))modelPromises.set(modelName,createModel(modelName).catch(error=>{modelPromises.delete(modelName);throw error}));
+    return modelPromises.get(modelName);
   }
+
+  const canTryBackup=error=>/high demand|temporar|unavailable|resource.?exhausted|\[\s*(429|500|502|503|504)\b|ai\/fetch-error/i.test(String(error?.message||error||''));
 
   async function ask({prompt,data,history=[],escape}){
     const base=root.CrmAssistantAI;
@@ -105,11 +107,22 @@ Return a useful answer plus evidence and every exact action required. If no acti
       conversation:(history||[]).slice(-8).map(item=>({role:item.role,content:clean(item.content)}))
     };
     try{
-      const model=await getModel();
-      const result=await model.generateContent(JSON.stringify({instruction:clean(prompt),context}));
-      const payload=JSON.parse(result.response.text());
-      const rendered=base.renderResult(payload,escape);
-      return {...rendered,source:'gemini'};
+      let lastError;
+      for(let index=0;index<MODELS.length;index+=1){
+        const modelName=MODELS[index];
+        try{
+          const model=await getModel(modelName);
+          const result=await model.generateContent(JSON.stringify({instruction:clean(prompt),context}));
+          const payload=JSON.parse(result.response.text());
+          const rendered=base.renderResult(payload,escape);
+          return {...rendered,source:'gemini',model:modelName};
+        }catch(error){
+          lastError=error;
+          console.warn(`Gemini model ${modelName} failed:`,error);
+          if(index===MODELS.length-1||!canTryBackup(error))throw error;
+        }
+      }
+      throw lastError;
     }catch(error){
       console.error('Gemini operator:',error);
       const detail=String(error?.message||'');
@@ -120,6 +133,6 @@ Return a useful answer plus evidence and every exact action required. If no acti
   }
 
   function configured(){return true}
-  root.CrmGeminiOperator={ask,configured,model:MODEL,setAppCheckSiteKey:()=>{localStorage.setItem(APP_CHECK_KEY,PRODUCTION_APP_CHECK_SITE_KEY);modelPromise=null}};
+  root.CrmGeminiOperator={ask,configured,model:MODELS[0],models:[...MODELS],setAppCheckSiteKey:()=>{localStorage.setItem(APP_CHECK_KEY,PRODUCTION_APP_CHECK_SITE_KEY);modelPromises.clear()}};
   root.CrmAssistantAI={...root.CrmAssistantAI,ask,configured};
 })(typeof globalThis!=='undefined'?globalThis:this);
