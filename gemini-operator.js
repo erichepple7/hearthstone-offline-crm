@@ -37,9 +37,14 @@
     ]);
     let app;
     try{app=appModule.getApp('gemini-haven')}catch(error){app=appModule.initializeApp(root.crmFirebaseConfig,'gemini-haven')}
-    const siteKey=localStorage.getItem(APP_CHECK_KEY)||root.crmFirebaseAppCheckSiteKey||PRODUCTION_APP_CHECK_SITE_KEY;
+    // Always prefer the registered production key. Older setup attempts may have
+    // left a mistyped key in one device's local storage (especially an iPhone PWA).
+    const siteKey=root.crmFirebaseAppCheckSiteKey||PRODUCTION_APP_CHECK_SITE_KEY;
+    if(localStorage.getItem(APP_CHECK_KEY)!==siteKey)localStorage.setItem(APP_CHECK_KEY,siteKey);
     if(siteKey){
-      try{appCheckModule.initializeAppCheck(app,{provider:new appCheckModule.ReCaptchaEnterpriseProvider(siteKey),isTokenAutoRefreshEnabled:true})}catch(error){if(!/already exists/i.test(String(error?.message||'')))throw error}
+      let appCheck;
+      try{appCheck=appCheckModule.initializeAppCheck(app,{provider:new appCheckModule.ReCaptchaEnterpriseProvider(siteKey),isTokenAutoRefreshEnabled:true})}catch(error){if(!/already exists/i.test(String(error?.message||'')))throw error;appCheck=appCheckModule.getAppCheck(app)}
+      await appCheckModule.getToken(appCheck,false);
     }
     const fieldSchema=aiModule.Schema.object({properties:{name:aiModule.Schema.string(),value:aiModule.Schema.string()}});
     const actionSchema=aiModule.Schema.object({
@@ -115,6 +120,6 @@ Return a useful answer plus evidence and every exact action required. If no acti
   }
 
   function configured(){return true}
-  root.CrmGeminiOperator={ask,configured,model:MODEL,setAppCheckSiteKey:key=>{localStorage.setItem(APP_CHECK_KEY,String(key||'').trim());modelPromise=null}};
+  root.CrmGeminiOperator={ask,configured,model:MODEL,setAppCheckSiteKey:()=>{localStorage.setItem(APP_CHECK_KEY,PRODUCTION_APP_CHECK_SITE_KEY);modelPromise=null}};
   root.CrmAssistantAI={...root.CrmAssistantAI,ask,configured};
 })(typeof globalThis!=='undefined'?globalThis:this);
