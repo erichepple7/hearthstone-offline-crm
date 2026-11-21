@@ -1,10 +1,10 @@
 (function(){
  'use strict';
  const providers={
-  instagram:{label:'Instagram',mark:'◎',setup:'https://developers.facebook.com/apps/',note:'Business or Creator account'},
-  facebook:{label:'Facebook',mark:'f',setup:'https://developers.facebook.com/apps/',note:'Facebook Page'},
-  youtube:{label:'YouTube',mark:'▶',setup:'https://console.cloud.google.com/apis/library/youtube.googleapis.com',note:'YouTube channel'},
-  tiktok:{label:'TikTok',mark:'♪',setup:'https://developers.tiktok.com/apps/',note:'TikTok creator account'}
+  instagram:{label:'Instagram',mark:'◎',setup:'https://developers.facebook.com/apps/',note:'@erichepplerealtor'},
+  facebook:{label:'Facebook',mark:'f',setup:'https://developers.facebook.com/apps/',note:'Eric Hepple Facebook Page'},
+  youtube:{label:'YouTube',mark:'▶',setup:'https://console.cloud.google.com/apis/library/youtube.googleapis.com',note:'@erichepple3734'},
+  tiktok:{label:'TikTok',mark:'♪',setup:'https://developers.tiktok.com/apps/',note:'@paradisepropertybrokers'}
  };
  const providerKeys=Object.keys(providers);
  const connectedStatus=()=>window.crmSocialPublishing?.connections||{};
@@ -22,7 +22,7 @@
   const statuses=connectedStatus();
   $('#modalKicker').textContent='SOCIAL PUBLISHING';
   $('#modalTitle').textContent='Connect social accounts';
-  $('#modalForm').innerHTML=`<div class="social-connection-list">${providerKeys.map(key=>{const provider=providers[key],account=statuses[key],connected=account?.connected===true;return`<article class="social-connect-row"><span class="social-mark ${key}">${provider.mark}</span><div><strong>${provider.label}</strong><small>${connected?`Connected as ${esc(account.name||provider.note)}`:provider.note}</small></div>${connected?`<button type="button" class="btn social-disconnect" data-provider="${key}">Disconnect</button>`:`<button type="button" class="btn primary social-connect" data-provider="${key}">Begin setup</button>`}</article>`}).join('')}</div><div class="social-security-note"><strong>Secure connection required</strong><p>Each platform must first approve this CRM as an application. Passwords are never entered or saved here. Until that approval is complete, Marketing Center will prepare and schedule campaigns but will not claim they were published.</p></div><div class="form-actions"><button type="button" class="btn" id="closeSocialConnections">Close</button></div>`;
+  $('#modalForm').innerHTML=`<div class="social-connection-list">${providerKeys.map(key=>{const provider=providers[key],account=statuses[key],connected=account?.connected===true;return`<article class="social-connect-row"><span class="social-mark ${key}">${provider.mark}</span><div><strong>${provider.label}</strong><small>${connected?`Connected as ${esc(account.name||provider.note)}`:provider.note}</small></div>${connected?`<button type="button" class="btn social-disconnect" data-provider="${key}">Disconnect</button>`:`<button type="button" class="btn primary social-connect" data-provider="${key}">Begin setup</button>`}</article>`}).join('')}</div><div class="social-security-note"><strong>Secure connection required</strong><p>Each platform must first approve this CRM as an application. Passwords are never entered or saved here. Until that approval is complete, Marketing Center will prepare and schedule campaigns but will not claim they were published.</p><p><a href="./privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="./data-deletion.html" target="_blank" rel="noopener">Data deletion instructions</a></p></div><div class="form-actions"><button type="button" class="btn" id="closeSocialConnections">Close</button></div>`;
   $('#modal').classList.remove('hidden');
   $('#closeSocialConnections').onclick=closeModal;
   $$('.social-connect').forEach(button=>button.onclick=()=>{const key=button.dataset.provider;if(window.crmSocialPublishing?.connect)return window.crmSocialPublishing.connect(key);window.open(providers[key].setup,'_blank','noopener');toast(`${providers[key].label} developer setup opened`)});
