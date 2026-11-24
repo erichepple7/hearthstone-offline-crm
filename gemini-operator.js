@@ -44,7 +44,10 @@
     if(siteKey){
       let appCheck;
       try{appCheck=appCheckModule.initializeAppCheck(app,{provider:new appCheckModule.ReCaptchaEnterpriseProvider(siteKey),isTokenAutoRefreshEnabled:true})}catch(error){if(!/already exists/i.test(String(error?.message||'')))throw error;appCheck=appCheckModule.getAppCheck(app)}
-      await appCheckModule.getToken(appCheck,false);
+      // Force a fresh attestation when Haven starts. Apple devices can retain an
+      // older App Check token after the registered reCAPTCHA key changes, even
+      // though ordinary Firestore sync is already working.
+      await appCheckModule.getToken(appCheck,true);
     }
     const fieldSchema=aiModule.Schema.object({properties:{name:aiModule.Schema.string(),value:aiModule.Schema.string()}});
     const actionSchema=aiModule.Schema.object({
