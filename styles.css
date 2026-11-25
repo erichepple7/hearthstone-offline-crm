@@ -312,3 +312,5 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .navitem:hover,.navitem.active{background:var(--brokerage-background-deep);color:#4f4b47}
 .sidebar-foot{border-top-color:#c9beb2}
 .sidebar-foot i{background:#8f8880}
+.gmail-connection{flex-wrap:wrap}.gmail-agent-access{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;margin-top:2px;padding-top:16px;border-top:1px solid var(--line)}.gmail-agent-access>div:first-child{display:grid;gap:4px}.gmail-agent-access small{color:var(--muted)}
+@media(max-width:700px){.gmail-agent-access{align-items:stretch;flex-direction:column}.gmail-agent-access .btn{width:100%}}
